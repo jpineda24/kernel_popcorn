@@ -1,5 +1,7 @@
 package nachos.threads;
 
+import java.util.LinkedList;
+
 import nachos.machine.*;
 
 /**
@@ -21,7 +23,8 @@ public class Condition2 {
      *				<tt>wake()</tt>, or <tt>wakeAll()</tt>.
      */
     public Condition2(Lock conditionLock) {
-	this.conditionLock = conditionLock;
+    	this.conditionLock = conditionLock;
+    	waitQueue = new LinkedList<KThread>();
     }
 
     /**
@@ -32,10 +35,18 @@ public class Condition2 {
      */
     public void sleep() {
 	Lib.assertTrue(conditionLock.isHeldByCurrentThread());
-
+	//KThread kt = KThread.currentThread();	// Set current thread
+	
 	conditionLock.release();
-
-	conditionLock.acquire();
+	boolean intStatus = Machine.interrupt().disable();  // Disable Interrupts
+	waitQueue.add(KThread.currentThread());	// Add thread to waitqueue
+	//threadQueue.waitForAccess(KThread.currentThread());  // Wait for access // Needed?
+	count++;
+	KThread.sleep();  // Puts current thread to sleep
+	
+	conditionLock.acquire();  // Reacquire Lock
+	
+	Machine.interrupt().restore(intStatus); // Restore Interrupts
     }
 
     /**
@@ -44,15 +55,46 @@ public class Condition2 {
      */
     public void wake() {
 	Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+	
+	boolean intStatus = Machine.interrupt().disable();
+	
+    if(!waitQueue.isEmpty()) {    	
+    //	waitQueue.removeFirst();
+    	// Set to next thread in threadQueue ( test for waitqueue and threadqueue)
+    	//KThread thread = threadQueue.nextThread();  
+    	
+    	KThread thread = waitQueue.removeFirst();  // Remove first thread in waitqueue and call to ready()
+    	count--;
+    	thread.ready();
+    }  // End of if loop
+    
+    Machine.interrupt().restore(intStatus);
     }
-
+    
     /**
      * Wake up all threads sleeping on this condition variable. The current
      * thread must hold the associated lock.
      */
     public void wakeAll() {
 	Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+	while(!waitQueue.isEmpty())  // Check if Queue is empty
+		wake();	// Wake all sleeping threads
     }
 
+    public int threadCount() {
+    	return count;
+    }
+    
+    //public static class conTest implements Runnable {	
+	  //    public void run() {
+	    //	  System.out.println("Hello From Condition2");
+	          
+	      //}
+	  //}
+    
+    
     private Lock conditionLock;
+    private int count;
+    private LinkedList<KThread> waitQueue;
+ 
 }
