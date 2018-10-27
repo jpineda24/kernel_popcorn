@@ -35,12 +35,11 @@ public class Condition2 {
      */
     public void sleep() {
 	Lib.assertTrue(conditionLock.isHeldByCurrentThread());
-	//KThread kt = KThread.currentThread();	// Set current thread
+	
 	
 	conditionLock.release();
 	boolean intStatus = Machine.interrupt().disable();  // Disable Interrupts
 	waitQueue.add(KThread.currentThread());	// Add thread to waitqueue
-	//threadQueue.waitForAccess(KThread.currentThread());  // Wait for access // Needed?
 	count++;
 	KThread.sleep();  // Puts current thread to sleep
 	
@@ -59,10 +58,7 @@ public class Condition2 {
 	boolean intStatus = Machine.interrupt().disable();
 	
     if(!waitQueue.isEmpty()) {    	
-    //	waitQueue.removeFirst();
-    	// Set to next thread in threadQueue ( test for waitqueue and threadqueue)
-    	//KThread thread = threadQueue.nextThread();  
-    	
+   
     	KThread thread = waitQueue.removeFirst();  // Remove first thread in waitqueue and call to ready()
     	count--;
     	thread.ready();

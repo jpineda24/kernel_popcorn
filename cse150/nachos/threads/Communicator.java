@@ -1,3 +1,5 @@
+// CURRENT COMMUNICATOR 
+
 package nachos.threads;
 
 import nachos.machine.*;
@@ -13,7 +15,13 @@ public class Communicator {
     /**
      * Allocate a new communicator.
      */
+	
     public Communicator() {
+    	// Allocate variables
+    	lock = new Lock();
+    	speakerQueue = new Condition2(lock);
+    	listenerQueue = new Condition2(lock);
+    	speakerReady = false;
     }
 
     /**
@@ -27,6 +35,19 @@ public class Communicator {
      * @param	word	the integer to transfer.
      */
     public void speak(int word) {
+    	lock.acquire();
+		speaker++;
+    	// Check if there is a listener or speaker is ready
+    	while(listener == 0 || speakerReady==false)
+    		speakerQueue.sleep();
+		//Set speaker flag to true
+		speakerReady = true;
+		// Save word
+		message = word;
+		//Broadcast
+    	listenerQueue.wakeAll();
+		speaker--;
+		lock.release();
     }
 
     /**
@@ -36,6 +57,37 @@ public class Communicator {
      * @return	the integer transferred.
      */    
     public int listen() {
-	return 0;
+    	int word;
+    	lock.acquire(); // acquire lock
+		listener++;
+				
+    	// if speaker queue count greater than 0/not empty wake
+    	// Else put listener to sleep
+    	while(speakerReady) {  // To be set in speaker
+    	 
+		if(speaker > 0)	
+    		speakerQueue.wake();
+    	else
+    		listenerQueue.sleep();
+    	}
+    	speakerReady = false;
+    	word = message;
+		listener--;
+    	
+    	
+    	lock.release();  // release lock and return word
+    	return word;
     }
+    
+    private Lock lock;
+    private Condition2 speakerQueue;
+    private Condition2 listenerQueue;
+    private int message;
+	private int speaker = 0;
+	private int listener = 0;
+    // Condition variable that would be set in speaker and then tested in listener
+    private boolean speakerReady;  
 }
+
+
+	
