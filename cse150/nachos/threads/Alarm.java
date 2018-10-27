@@ -45,6 +45,9 @@ public class Alarm {
      * @see	nachos.machine.Timer#getTime()
      */
     public void waitUntil(long x) {
+
+    Machine.interrupt().disable(); //interrupt disables
+
 	// for now, cheat just to get something working (busy waiting is bad)
 	long wakeTime = Machine.timer().getTime() + x;
 	while (wakeTime > Machine.timer().getTime())
