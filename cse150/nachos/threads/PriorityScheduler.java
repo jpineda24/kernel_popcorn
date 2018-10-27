@@ -1,5 +1,5 @@
 package nachos.threads;
-
+import java.util.*; 
 import nachos.machine.*;
 
 import java.util.TreeSet;
@@ -125,6 +125,7 @@ public class PriorityScheduler extends Scheduler {
     /**
      * A <tt>ThreadQueue</tt> that sorts threads by priority.
      */
+	 ///////////////////////////////////PRIORITY_QUEUE	////////////////////////////////////
     protected class PriorityQueue extends ThreadQueue {
 	PriorityQueue(boolean transferPriority) {
 	    this.transferPriority = transferPriority;
@@ -184,10 +185,20 @@ public class PriorityScheduler extends Scheduler {
 	 *
 	 * @param	thread	the thread this state belongs to.
 	 */
+	 //////////////////////////////////////////////////THREADTEST/////////////////////////////////////////////////////////
+	 //list for resources this thread is waiting on
+	 LinkedList<PriorityQueue> waitingOnResources;
+	 //list for resources this thread is currently holding
+	 LinkedList<PriorityQueue> currentResources;
+	//thread associated with this threadstate
+	KThread myThread;
+
 	public ThreadState(KThread thread) {
 	    this.thread = thread;
-	    
+		waitingOnResources = new LinkedList<PriorityQueue>();
+		currentResources = new LinkedList<PriorityQueue>();
 	    setPriority(priorityDefault);
+		myThread = thread;
 	}
 
 	/**
@@ -205,8 +216,10 @@ public class PriorityScheduler extends Scheduler {
 	 * @return	the effective priority of the associated thread.
 	 */
 	public int getEffectivePriority() {
-	    // implement me
+	    // check if no resources held in thread first
 	    return priority;
+		//otherwise get the effective priority of the resources currently being held1
+		
 	}
 
 	/**
@@ -236,7 +249,10 @@ public class PriorityScheduler extends Scheduler {
 	 * @see	nachos.threads.ThreadQueue#waitForAccess
 	 */
 	public void waitForAccess(PriorityQueue waitQueue) {
-	    // implement me
+	    //waiting for these resources
+		waitingOnResources.add(waitQueue);
+		//delete from current resources if in there
+		currentResources.remove(waitQueue);
 	}
 
 	/**
@@ -250,7 +266,10 @@ public class PriorityScheduler extends Scheduler {
 	 * @see	nachos.threads.ThreadQueue#nextThread
 	 */
 	public void acquire(PriorityQueue waitQueue) {
-	    // implement me
+	    //delete resource queue from waiting for access list
+		waitingOnResources.remove(waitQueue);
+		//obtain resoure queue queue
+		currentResources.add(waitQueue);
 	}	
 
 	/** The thread with which this object is associated. */	   
