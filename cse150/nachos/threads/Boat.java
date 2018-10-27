@@ -88,7 +88,7 @@ public class Boat
         /** the communicator is checking if there are still threads at Oahu */
         while(theCommunicator.listen() != (adultTotal + childTotal))
         {
-            if(theCommunicator.listen() == (adultTotal + childTota))
+            if(theCommunicator.listen() == (adultTotal + childTotal))
             {
                 break;
             }
@@ -172,7 +172,7 @@ public class Boat
                         /**if there is only one child left, have it go to Molokai on its own */
                         if(childAtOahu == 1)
                         {
-                            bg.childRowToMolokai();
+                            bg.ChildRowToMolokai();
 
                             childAtOahu = childAtOahu - 1;
                             childAtMolokai = childAtMolokai + 1;
@@ -184,7 +184,7 @@ public class Boat
                          */
                         else
                         {
-                            bg.childRowToMolokai();
+                            bg.ChildRowToMolokai();
                             bg.ChildRideToMolokai();
 
                             /**amount children will change depending on the location */
@@ -204,7 +204,7 @@ public class Boat
                 {
                     lockOfBoat.acquire();
 
-                    bg.childRowToMolokai();
+                    bg.ChildRowToMolokai();
                     bg.ChildRideToMolokai();
 
                     childAtOahu = childAtOahu - 2;
