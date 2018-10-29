@@ -18,7 +18,6 @@ public class Communicator {
 	
     public Communicator() {
     	// Allocate variables
-		this.message = -11;
     	lock = new Lock();
     	speakerQueue = new Condition2(lock);
     	listenerQueue = new Condition2(lock);
@@ -40,7 +39,7 @@ public class Communicator {
     	lock.acquire();
 		speaker++;
     	// Check if there is a listener or speaker is ready
-    	while(speakerReady || this.message != -11){
+    	while(speakerReady){
     		speakerQueue.sleep();
 		}
 		// Save word
@@ -67,12 +66,11 @@ public class Communicator {
 				
     	// if speaker queue count greater than 0/not empty wake
     	// Else put listener to sleep
-    	while(this.message == -11) {  // To be set in speaker
+    	while(!speakerReady) {  // To be set in speaker
 			listenerQueue.sleep();
     	}
     	speakerReady = false;
     	word = this.message;
-		message = -11;
 		listener--;
     	speakerQueue.wake();
 		SL.wake();
