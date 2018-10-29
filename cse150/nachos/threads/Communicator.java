@@ -21,7 +21,7 @@ public class Communicator {
     	lock = new Lock();
     	speakerQueue = new Condition2(lock);
     	listenerQueue = new Condition2(lock);
-		SL = new Condition2(lock);		//speak listen
+		SL = new Condition2(lock);		//it makes sure that listener returns first
     	speakerReady = false;
     }
 
@@ -39,8 +39,9 @@ public class Communicator {
     	lock.acquire();
 		speaker++;
     	// Check if there is a listener or speaker is ready
-    	while(speakerReady)
+    	while(speakerReady){
     		speakerQueue.sleep();
+		}
 		// Save word
 		this.message = word;
 		//Set speaker flag to true
