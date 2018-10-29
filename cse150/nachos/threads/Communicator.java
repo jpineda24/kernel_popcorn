@@ -67,12 +67,12 @@ public class Communicator {
 				
     	// if speaker queue count greater than 0/not empty wake
     	// Else put listener to sleep
-    	while(word == -11) {  // To be set in speaker
+    	while(this.message == -11) {  // To be set in speaker
 			listenerQueue.sleep();
     	}
     	speakerReady = false;
     	word = this.message;
-		word = -11;
+		message = -11;
 		listener--;
     	speakerQueue.wake();
 		SL.wake();
