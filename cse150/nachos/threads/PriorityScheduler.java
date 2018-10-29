@@ -171,7 +171,7 @@ public class PriorityScheduler extends Scheduler {
 	    	return null;
 		}
 		
-		// Call to pickNextThread that will return highest priority th
+		// Call to pickNextThread that will return highest priority thread
 		ThreadState nextThread = pickNextThread();
 	
 		
@@ -194,21 +194,25 @@ public class PriorityScheduler extends Scheduler {
 	 */
 	protected ThreadState pickNextThread() {	// Returns KThread instead of ThreadState
 	    // implement me
-		
 		ThreadState nextTS = null;
+
+		if(!tstate.isEmpty()){	
+			//Get first threadstate from list
+			nextTS = tstate.getFirst();
+			//Loop through list and Check Priorities
 			
-		
-		//Loop through list and Check Priorities
-		for(int i = 0; i < tstate.size(); i++) {
-			ThreadState temp = tstate.get(i);	// Set temp to threadstates in LinkedList tlist
-						
-			if(temp.getEffectivePriority() > nextTS.priority ) {	// Compare priorities and set to thread for return.  
-				nextTS = temp;	//nextTS gets largest priority
+			for(int i = 0; i < tstate.size(); i++) {
+				ThreadState temp = tstate.get(i);	// Set temp to threadstates in LinkedList tlist
+							
+				if(temp.getEffectivePriority() > nextTS.priority ) {	// Compare priorities and set to thread for return.  
+					nextTS = temp;	//nextTS gets largest priority
+				}
+				
 			}
 			
 		}
 		
-	    return nextTS;
+		return nextTS;
 	}
 	
 	public void print() {
@@ -224,7 +228,7 @@ public class PriorityScheduler extends Scheduler {
 	int getEffectivePriority() {
 		int effective=0;
 		// Check if thread has been flagged for update
-		if(flag) { 
+		if(flag && transferPriority) { 
 			effective = priorityMinimum;
 			flag = false;
 			
@@ -303,14 +307,14 @@ public class PriorityScheduler extends Scheduler {
 		//otherwise get the effective priority of the resources currently being held1
 		if(dirtyBit){
 			effectiveP = priority;
-			//int currentPriority = 0;
+			//no updates needed after this one
+			dirtyBit = false;
 			for(int i = 0; i < currentResources.size(); i++){
 				int currentPriority = currentResources.get(i).getEffectivePriority();
 				if(currentPriority > effectiveP){
 					effectiveP = currentPriority;
 				}
-			}
-			return effectiveP;	
+			}	
 		}
 		return effectiveP; 
 	}
@@ -327,15 +331,16 @@ public class PriorityScheduler extends Scheduler {
 	    
 	    this.priority = priority;
 	    
-	    setCacheToDirty();
+	   for(int i = 0; i < waitingOnResources.size(); i++){ 
+			waitingOnResources.get(i).flag = true;
+		}
 	}
 
 	//Helper function to set queue to dirty when priority has changed
 	public void setCacheToDirty(){
-		if(dirtyBit){
-			return;
+		if(!dirtyBit){
+			dirtyBit = true;
 		}
-		dirtyBit  = true;
 		for(int i = 0; i < waitingOnResources.size(); i++){ 
 			waitingOnResources.get(i).flag = true;
 		}

@@ -21,6 +21,7 @@ public class Communicator {
     	lock = new Lock();
     	speakerQueue = new Condition2(lock);
     	listenerQueue = new Condition2(lock);
+		SL = new Condition2(lock);		//speak listen
     	speakerReady = false;
     }
 
@@ -38,14 +39,15 @@ public class Communicator {
     	lock.acquire();
 		speaker++;
     	// Check if there is a listener or speaker is ready
-    	while(listener == 0 || speakerReady==false)
+    	while(speakerReady)
     		speakerQueue.sleep();
+		// Save word
+		this.message = word;
 		//Set speaker flag to true
 		speakerReady = true;
-		// Save word
-		message = word;
 		//Broadcast
-    	listenerQueue.wakeAll();
+    	listenerQueue.wake();
+		SL.sleep();
 		speaker--;
 		lock.release();
     }
@@ -57,24 +59,20 @@ public class Communicator {
      * @return	the integer transferred.
      */    
     public int listen() {
-    	int word;
+		int word;
     	lock.acquire(); // acquire lock
 		listener++;
 				
     	// if speaker queue count greater than 0/not empty wake
     	// Else put listener to sleep
-    	while(speakerReady) {  // To be set in speaker
-    	 
-		if(speaker > 0)	
-    		speakerQueue.wake();
-    	else
-    		listenerQueue.sleep();
+    	while(!speakerReady) {  // To be set in speaker
+			listenerQueue.sleep();
     	}
     	speakerReady = false;
-    	word = message;
+    	word = this.message;
 		listener--;
-    	
-    	
+    	speakerQueue.wake();
+		SL.wake();
     	lock.release();  // release lock and return word
     	return word;
     }
@@ -82,6 +80,7 @@ public class Communicator {
     private Lock lock;
     private Condition2 speakerQueue;
     private Condition2 listenerQueue;
+	private Condition2 SL;
     private int message;
 	private int speaker = 0;
 	private int listener = 0;
