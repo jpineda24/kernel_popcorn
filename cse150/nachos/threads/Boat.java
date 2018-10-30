@@ -26,11 +26,11 @@ public class Boat
 	System.out.println("\n ***Testing Boats with only 2 children***");
 	begin(0, 2, b);
 
-//	System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
-//  	begin(1, 2, b);
+	System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
+  	begin(1, 2, b);
 
-//  	System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
-//  	begin(3, 3, b);
+  	System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
+  	begin(3, 3, b);
     }
 
     public static void begin( int adults, int children, BoatGrader b )
@@ -200,17 +200,21 @@ public class Boat
                     break;
                 }
 
+                /**this will take care for when there at least 2 children left at Oahu */
                 if(childAtOahu >= 2)
                 {
                     lockOfBoat.acquire();
 
+                    /**it will be sending 2 children to Molokai */
                     bg.childRowToMolokai();
                     bg.ChildRideToMolokai();
 
+                    /**the amount of children will change for each place */
                     childAtOahu = childAtOahu - 2;
                     childAtMolokai = childAtMolokai + 2;
                     locationOfBoat = "Molokai";
 
+                    /**this will check if there are any adults left at Oahu to have 1 child go get them */
                     if(adultTotal != adultAtMolokai)
                     {
                         bg.ChildRowToOahu();
@@ -226,10 +230,12 @@ public class Boat
             {
                 lockOfBoat.acquire();
 
+                /**this scenario is for when all adults are at Molokai */
                 if(adultTotal > 0)
                 {
                     if(adultTotal == adultAtMolokai)
                     {
+                        /**this will focus on only moving the children */
                         while(childTotal < childAtMolokai)
                         {
                             bg.ChildRowToOahu();
@@ -243,10 +249,14 @@ public class Boat
                             childAtMolokai = childAtMolokai + 2;
                             childAtOahu = childAtOahu - 2;
                         }
+                        /**theCommunicator will know when everyone got to Molokai */
                         theCommunicator.speak(adultTotal + childTotal);
                     }
                 }
 
+                /**case for when there is one child back at Oahu, we only need
+                 * to send one child to pick up the other
+                 */
                 if(childTotal != childAtMolokai)
                 {
                     bg.ChildRowToOahu();
@@ -263,7 +273,7 @@ public class Boat
 
                 lockOfBoat.release();
             }
-            KThread.yield();
+            KThread.yield();        //one must yield if the conditions weren't met
         }
     }
 
