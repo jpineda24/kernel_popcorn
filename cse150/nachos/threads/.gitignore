@@ -26,3 +26,5 @@
 /ThreadedKernel.class
 /Boat$1.class
 /Boat$2.class
+/Alarm$TimeCompare.class
+/Alarm$WaitingThread.class

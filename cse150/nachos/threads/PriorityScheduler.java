@@ -132,7 +132,8 @@ public class PriorityScheduler extends Scheduler {
     ThreadState current;	// current thread
     LinkedList <ThreadState> tstate;	// Linked list of thread states
     boolean flag;	// Flag for checking priority update
-       
+    int effectiveP;
+	boolean transfer;
     
 	PriorityQueue(boolean transferPriority) {
 	    this.transferPriority = transferPriority;
@@ -141,6 +142,8 @@ public class PriorityScheduler extends Scheduler {
 	    current = null;
 	    tstate = new LinkedList <ThreadState>();
 	    flag = false;
+		effectiveP = 0;
+		transfer = transferPriority;
 	}
 
 	public void waitForAccess(KThread thread) {
@@ -156,9 +159,14 @@ public class PriorityScheduler extends Scheduler {
 	    Lib.assertTrue(Machine.interrupt().disabled());
 	    getThreadState(thread).acquire(this);
 	    // sets current thread to thread state
-	    
+		//if old owner is not null then remove it from queue
+	    if(current != null){
+			current.currentResources.remove(this);
+			current.setCacheToDirty();
+		}
+		//acquire resource and create current ownser of thread
 	   ThreadState nextTstate = getThreadState(thread);
-	   
+	   current = nextTstate;
 	   nextTstate.acquire(this);
 	}
 
@@ -226,23 +234,22 @@ public class PriorityScheduler extends Scheduler {
 	 * If queue is flagged, return max priority of each thread.
 	 */
 	int getEffectivePriority() {
-		int effective=0;
 		// Check if thread has been flagged for update
 		if(flag && transferPriority) { 
-			effective = priorityMinimum;
+			effectiveP = priorityMinimum;
 			flag = false;
 			
 			// Loop through LinkedList 
 			for(int i = 0; i < tstate.size();i++) {
 				ThreadState temp = tstate.get(i);
 				//Compare priorities and set effective to largest
-				if (temp.getEffectivePriority() > effective) {
-					effective = temp.getEffectivePriority();
+				if (temp.getEffectivePriority() > effectiveP) {
+					effectiveP = temp.getEffectivePriority();
 				}
 			}
 		}
 		
-		return effective;
+		return effectiveP;
 	}
 
 	/**
@@ -271,19 +278,17 @@ public class PriorityScheduler extends Scheduler {
 	 LinkedList<PriorityQueue> waitingOnResources;
 	 //list for resources this thread is currently holding
 	 LinkedList<PriorityQueue> currentResources;
-	//thread associated with this threadstate
-	KThread myThread;
 	//Effective priority
 	int effectiveP = 0;
 	//dirty bit
 	boolean dirtyBit = false;
+
 
 	public ThreadState(KThread thread) {
 	    this.thread = thread;
 		waitingOnResources = new LinkedList<PriorityQueue>();
 		currentResources = new LinkedList<PriorityQueue>();
 	    setPriority(priorityDefault);
-		myThread = thread;
 	}
 
 	/**
@@ -306,7 +311,7 @@ public class PriorityScheduler extends Scheduler {
 	    	return priority;
 		//otherwise get the effective priority of the resources currently being held1
 		if(dirtyBit){
-			effectiveP = priority;
+			this.effectiveP = priority;
 			//no updates needed after this one
 			dirtyBit = false;
 			for(int i = 0; i < currentResources.size(); i++){
