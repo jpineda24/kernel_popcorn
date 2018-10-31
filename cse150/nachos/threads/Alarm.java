@@ -1,12 +1,20 @@
 package nachos.threads;
 
+import java.util.Comparator;
+import java.util.PriorityQueue;
 import nachos.machine.*;
+
 
 /**
  * Uses the hardware timer to provide preemption, and to allow threads to sleep
  * until a certain time.
  */
-public class Alarm {
+public class Alarm 
+{
+
+    //create waitQueue of WaitingThreads, ordered through TimeComparator
+    PriorityQueue<WaitingThread> waitQueue = new PriorityQueue<WaitingThread>(10, new TimeCompare()); //initial capacity, order WaitingComparator
+
     /**
      * Allocate a new Alarm. Set the machine's timer interrupt handler to this
      * alarm's callback.
@@ -14,8 +22,10 @@ public class Alarm {
      * <p><b>Note</b>: Nachos will not function correctly with more than one
      * alarm.
      */
-    public Alarm() {
-	Machine.timer().setInterruptHandler(new Runnable() {
+    public Alarm() 
+    {
+	
+        Machine.timer().setInterruptHandler(new Runnable() {
 		public void run() { timerInterrupt(); }
 	    });
     }
@@ -26,8 +36,21 @@ public class Alarm {
      * thread to yield, forcing a context switch if there is another thread
      * that should be run.
      */
-    public void timerInterrupt() {
-	KThread.currentThread().yield();
+    public void timerInterrupt() 
+    {
+	
+        Machine.interrupt().disable(); //disable
+
+        //if waitingQueue is empty, and current time is greater than or equal to the first WaitingThreads, wakeUp time,
+        while(!waitQueue.isEmpty() && Machine.timer().getTime() >= waitQueue.peek().wakeUp)
+        {
+            waitQueue.poll().thread.ready(); //pop head
+        }
+
+        KThread.currentThread().yield();
+
+        Machine.interrupt().enable(); //enable
+
     }
 
     /**
@@ -44,13 +67,53 @@ public class Alarm {
      *
      * @see	nachos.machine.Timer#getTime()
      */
-    public void waitUntil(long x) {
+    public void waitUntil(long x) 
+    {
 
-    Machine.interrupt().disable(); //interrupt disables
+        Machine.interrupt().disable(); //disable interrupts
 
-	// for now, cheat just to get something working (busy waiting is bad)
-	long wakeTime = Machine.timer().getTime() + x;
-	while (wakeTime > Machine.timer().getTime())
-	    KThread.yield();
+	    long wakeTime = Machine.timer().getTime() + x; //calculate wakeTime
+
+        //pass through wakeTime and current thread as instance variables for a
+        WaitingThread a = new WaitingThread(wakeTime, KThread.currentThread());
+
+        waitQueue.add(a); //add a to the waitQueue 
+
+        KThread.currentThread().sleep(); //sleep current thread
+
+        Machine.interrupt().enable(); //enable interrupts
+    }
+
+    public class WaitingThread //PriorityQueue of waiting threads
+    {
+        long wakeUp; //time to wake up;
+        KThread thread; //thread associated with
+
+        WaitingThread(long wakeUp, KThread thread) //initialize with these variables
+        {
+            this.wakeUp = wakeUp;
+            this.thread = thread;
+        }
+
+    }
+
+    public class TimeCompare implements Comparator<WaitingThread> //for comparing wait times
+    {
+        @Override
+        public int compare(WaitingThread a, WaitingThread b)
+        {
+            if(a.wakeUp < b.wakeUp)
+            {
+                return -1;
+            }
+            else if (a.wakeUp == b.wakeUp)
+            {
+                return 0;
+            }
+            else
+            {
+                return 1;
+            }
+        }
     }
 }

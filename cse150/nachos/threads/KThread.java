@@ -34,7 +34,7 @@ public class KThread {
      * @return	the current thread.
      */
     public static KThread currentThread() {
-	Lib.assertTrue(currentThread != null);
+	Lib.assertTrue(currentThread != null);			//gets the current thread
 	return currentThread;
     }
     
@@ -42,21 +42,23 @@ public class KThread {
      * Allocate a new <tt>KThread</tt>. If this is the first <tt>KThread</tt>,
      * create an idle thread as well.
      */
-    public KThread() {
-	if (currentThread != null) {
-	    tcb = new TCB();
-	}	    
-	else {
-	    readyQueue = ThreadedKernel.scheduler.newThreadQueue(false);
-	    readyQueue.acquire(this);	    
+    public KThread() 
+    {
+        joiningFila = ThreadedKernel.scheduler.newThreadQueue(true);
+        if (currentThread != null) {
+            tcb = new TCB();						//it will make a new one KThread but if it is the first on it will make an idle one as well
+        }	    
+        else {
+            readyQueue = ThreadedKernel.scheduler.newThreadQueue(false);
+            readyQueue.acquire(this);	    
 
-	    currentThread = this;
-	    tcb = TCB.currentTCB();
-	    name = "main";
-	    restoreState();
+            currentThread = this;
+            tcb = TCB.currentTCB();
+            name = "main";
+            restoreState();
 
-	    createIdleThread();
-	}
+            createIdleThread();
+        }
     }
 
     /**
@@ -197,6 +199,15 @@ public class KThread {
 	sleep();
     }
 
+    // private void wakeUpEverything()
+    // {
+    //     KThread T;
+    //     while((T = this.waitingFila.nextThread()) != null)
+    //     {
+    //         T.ready();
+    //     }
+    // }
+
     /**
      * Relinquish the CPU if any other thread is ready to run. If so, put the
      * current thread on the ready queue, so that it will eventually be
@@ -272,11 +283,33 @@ public class KThread {
      * call is not guaranteed to return. This thread must not be the current
      * thread.
      */
-    public void join() {
-	Lib.debug(dbgThread, "Joining to thread: " + toString());
+    public void join() 
+    {
+        /**first off the machine interrupts will be disabled to allow atomicity */
+        Machine.interrupt().disable();
+        
+        Lib.debug(dbgThread, "Joining to thread: " + toString());
 
-	Lib.assertTrue(this != currentThread);
+        /**if the thread is complete, the join function won't do anything */
+        if(this.status == statusFinished)
+        {
+            return;
+        }
 
+        /**this checks the thread is trying to join itself */
+        Lib.assertTrue(this != currentThread);
+        
+        /**the joiningFila thread is working with whatever the current thread is */
+        joiningFila.acquire(currentThread);
+        joiningFila.waitForAccess(currentThread);
+
+
+        /**The next thread in the queue will get exexcution time since the current thread is waiting */
+        currentThread.yield();
+
+        /**resume the machine interrupts */
+        Machine.interrupt().enable();
+	
     }
 
     /**
@@ -439,9 +472,12 @@ public class KThread {
     private int id = numCreated++;
     /** Number of times the KThread constructor was called. */
     private static int numCreated = 0;
-
+    
     private static ThreadQueue readyQueue = null;
     private static KThread currentThread = null;
     private static KThread toBeDestroyed = null;
     private static KThread idleThread = null;
+    
+    //CREATE THREAD QUEUE 
+    private ThreadQueue joiningFila = null;
 }
