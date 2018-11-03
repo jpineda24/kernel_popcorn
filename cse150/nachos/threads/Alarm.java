@@ -12,8 +12,8 @@ import nachos.machine.*;
 public class Alarm 
 {
 
-    //create waitQueue of WaitingThreads, ordered through TimeComparator
-    PriorityQueue<WaitingThread> waitQueue = new PriorityQueue<WaitingThread>(10, new TimeCompare()); //initial capacity, order WaitingComparator
+    //create waitingQueue of WaitingThreads, ordered through TimeComparator
+    PriorityQueue<WaitingThread> waitingQueue; //initial capacity, order WaitingComparator
 
     /**
      * Allocate a new Alarm. Set the machine's timer interrupt handler to this
@@ -24,7 +24,7 @@ public class Alarm
      */
     public Alarm() 
     {
-	
+        waitingQueue = new PriorityQueue<WaitingThread>(10, new TimeCompare());
         Machine.timer().setInterruptHandler(new Runnable() {
 		public void run() { timerInterrupt(); }
 	    });
@@ -42,9 +42,9 @@ public class Alarm
         Machine.interrupt().disable(); //disable
 
         //if waitingQueue is empty, and current time is greater than or equal to the first WaitingThreads, wakeUp time,
-        while(!waitQueue.isEmpty() && Machine.timer().getTime() >= waitQueue.peek().wakeUp)
+        while(!waitingQueue.isEmpty() && Machine.timer().getTime() >= waitingQueue.peek().wakeUp)
         {
-            waitQueue.poll().thread.ready(); //pop head
+            waitingQueue.poll().thread.ready(); //pop head
         }
 
         KThread.currentThread().yield();
@@ -72,12 +72,14 @@ public class Alarm
 
         Machine.interrupt().disable(); //disable interrupts
 
-	    long wakeTime = Machine.timer().getTime() + x; //calculate wakeTime
+	    long wakeTime; 
+        wakeTime =  Machine.timer().getTime() + x; //calculate wakeTime
 
         //pass through wakeTime and current thread as instance variables for a
-        WaitingThread a = new WaitingThread(wakeTime, KThread.currentThread());
+        WaitingThread a;
+        a = new WaitingThread(wakeTime, KThread.currentThread());
 
-        waitQueue.add(a); //add a to the waitQueue 
+        waitingQueue.add(a); //add a to the waitingQueue 
 
         KThread.currentThread().sleep(); //sleep current thread
 
@@ -102,7 +104,7 @@ public class Alarm
     
         public int compare(WaitingThread a, WaitingThread b)
         {
-            if(a.wakeUp < b.wakeUp)
+            if(b.wakeUp > a.wakeUp)
             {
                 return -1;
             }

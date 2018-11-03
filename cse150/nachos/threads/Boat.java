@@ -9,34 +9,13 @@ public class Boat
 	private static Lock lockOfBoat;
 	private static String locationOfBoat;
 
+
 	static private int adultTotal;
 	static private int childTotal;
 	static private int adultsAtOahu;
 	static private int childAtOahu;
 	static private int adultsAtMolokai;
 	static private int childAtMolokai;
-
-	public static void selfTest()
-	{
-		// This initializes the BoatGrader that we need to make calls to
-		// in order to get graded
-		BoatGrader b = new BoatGrader();
-
-		// NOTE* All cases are solved for mathematical induction tests
-//		System.out.println("\n ***Testing Mathematical Induction Cases***");
-//		begin(0, 2, b);
-//		begin(1, 2, b);
-//		begin(0, 3, b);
-//		begin(2, 2, b);
-//		begin(2, 3, b);
-//		begin(3, 3, b);
-
-		// NOTE* All cases are solved for stress tests
-//		System.out.println("\n ***Testing Stress Case***");
-//		begin(0, 47, b);
-//		begin(23, 3, b);
-		begin(13, 92, b);
-	}
 
 	public static void begin( int adults, int children, BoatGrader b )
 	{
@@ -47,7 +26,7 @@ public class Boat
 		// Instantiate global variables here
 		theCommunicator = new Communicator();
 		lockOfBoat = new Lock();
-		locationOfBoat = "Oahu";
+		locationOfBoat = "OahuLocation";
 
 		// Initialize the number of total adults and children
 		adultTotal = adults;
@@ -64,11 +43,12 @@ public class Boat
 				AdultItinerary();
 			}
 		};
-		for (int i = 0; i < adultTotal; i++)
+        int x = 0;
+		while (x < adultTotal)
 		{
 			KThread adultThread = new KThread(adultRunnable);
-			adultThread.setName("Adult " + i);
 			adultThread.fork();
+            x = x + 1;
 		}
 
 		// Initialize all child threads
@@ -79,11 +59,12 @@ public class Boat
 				ChildItinerary();
 			}
 		};
-		for (int i = 0; i < childTotal; i++)
+        int i = 0;
+		while(i < childTotal)
 		{
 			KThread childThread = new KThread(childRunnable);
-			childThread.setName("Child " + i);
 			childThread.fork();
+            i = i + 1;
 		}
 
 		// While the theCommunicator sees that there are still threads on Oahu
@@ -110,7 +91,7 @@ public class Boat
 			}
 
 			// If the boat is on Oahu
-			if (locationOfBoat.equals("Oahu"))
+			if (locationOfBoat.equals("OahuLocation"))
 			{
 				// If there is one adult on Oahu and at least one child on Oahu
 				if (adultsAtOahu >= 1 && (childTotal != childAtOahu))
@@ -126,7 +107,7 @@ public class Boat
 					adultsAtMolokai = adultsAtMolokai + 1;
 
 					// The boat is now on Molokai
-					locationOfBoat = "Molokai";
+					locationOfBoat = "MolokaiLocation";
 
 					// If there are children remaining on Oahu, send a child to pick them up
 					// This should ALWAYS be the case
@@ -140,7 +121,7 @@ public class Boat
 						childAtMolokai = childAtMolokai - 1;
 
 						// The boat moves back to Oahu
-						locationOfBoat = "Oahu";
+						locationOfBoat = "OahuLocation";
 					}
 
 					// Release the lock we held
@@ -170,7 +151,7 @@ public class Boat
 			}
 
 			// If the boat is on Oahu
-			if (locationOfBoat.equals("Oahu"))
+			if (locationOfBoat.equals("OahuLocation"))
 			{
 				// If the amount of adults on Oahu is 0, we only have to commute children
 				// to Molokai
@@ -187,7 +168,7 @@ public class Boat
 							childAtOahu = childAtOahu - 1;
 							childAtMolokai = childAtMolokai + 1;
 
-							locationOfBoat = "Molokai";
+							locationOfBoat = "MolokaiLocation";
 						}
 						// If there is more than one child there, we row two people back to Molokai
 						// and we send one child to Oahu to pick up his friend
@@ -199,14 +180,14 @@ public class Boat
 							childAtOahu = childAtOahu - 2;
 							childAtMolokai = childAtMolokai + 2;
 
-							locationOfBoat = "Molokai";
+							locationOfBoat = "MolokaiLocation";
 
 							bg.ChildRowToOahu();
 
 							childAtOahu = childAtOahu + 1;
 							childAtMolokai = childAtMolokai - 1;
 
-							locationOfBoat = "Oahu";
+							locationOfBoat = "OahuLocation";
 						}
 					}
 
@@ -226,7 +207,7 @@ public class Boat
 					childAtOahu = childAtOahu - 2;
 					childAtMolokai = childAtMolokai + 2;
 
-					locationOfBoat = "Molokai";
+					locationOfBoat = "MolokaiLocation";
 
 					// If there is at least one adult back at Oahu, we send one child to pick them up
 					if (adultTotal != adultsAtMolokai)
@@ -236,13 +217,13 @@ public class Boat
 						childAtOahu = childAtOahu + 1;
 						childAtMolokai = childAtMolokai - 1;
 
-						locationOfBoat = "Oahu";
+						locationOfBoat = "OahuLocation";
 					}
 
 					lockOfBoat.release();
 				}
 			}
-			else if (locationOfBoat.equals("Molokai"))
+			else if (locationOfBoat.equals("MolokaiLocation"))
 			{
 				lockOfBoat.acquire();
 
