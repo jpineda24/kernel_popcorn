@@ -42,7 +42,9 @@ public class Alarm
         Machine.interrupt().disable(); //disable
 
         //if waitingQueue is empty, and current time is greater than or equal to the first WaitingThreads, wakeUp time,
-        while(!waitingQueue.isEmpty() && Machine.timer().getTime() >= waitingQueue.peek().wakeUp)
+        while(!waitingQueue.isEmpty() && (waitingQueue.peek().wakeUp < Machine.timer().getTime()
+            || waitingQueue.peek().wakeUp ==  Machine.timer().getTime()))
+    
         {
             waitingQueue.poll().thread.ready(); //pop head
         }
