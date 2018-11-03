@@ -89,24 +89,24 @@ public class Alarm
         long wakeUp; //time to wake up;
         KThread thread; //thread associated with
 
-        WaitingThread(long wakeUp, KThread thread) //initialize with these variables
+        WaitingThread(long timeTowakeUp, KThread threadS) //initialize with these variables
         {
-            this.wakeUp = wakeUp;
-            this.thread = thread;
+            wakeUp = timeTowakeUp;
+            thread = threadS;
         }
 
     }
 
     public class TimeCompare implements Comparator<WaitingThread> //for comparing wait times
     {
-        @Override
+    
         public int compare(WaitingThread a, WaitingThread b)
         {
             if(a.wakeUp < b.wakeUp)
             {
                 return -1;
             }
-            else if (a.wakeUp == b.wakeUp)
+            if (a.wakeUp == b.wakeUp)
             {
                 return 0;
             }
