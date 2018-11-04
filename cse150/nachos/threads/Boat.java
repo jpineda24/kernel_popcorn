@@ -9,7 +9,6 @@ public class Boat
 	private static Lock lockOfBoat;
 	private static String locationOfBoat;
 
-
 	static private int adultTotal;
 	static private int childTotal;
 	static private int adultsAtOahu;
@@ -19,23 +18,21 @@ public class Boat
 
 	public static void begin( int adults, int children, BoatGrader b )
 	{
-		// Store the externally generated autograder in a class
-		// variable to be accessible by children.
 		bg = b;
 
-		// Instantiate global variables here
+		/**the global variables will be initiated inside the begin() funstion */
 		theCommunicator = new Communicator();
 		lockOfBoat = new Lock();
 		locationOfBoat = "OahuLocation";
 
-		// Initialize the number of total adults and children
+		/** the variables for the total amount of children and adults will be initiated with the inputted values of the function */
 		adultTotal = adults;
 		childTotal = children;
 
 		adultsAtOahu = adults;
 		childAtOahu = children;
 
-		// Initialize all adult threads
+		/** the following statements will be initializing the adult and child threads */
 		Runnable adultRunnable = new Runnable()
 		{
 			public void run()
@@ -51,7 +48,6 @@ public class Boat
             x = x + 1;
 		}
 
-		// Initialize all child threads
 		Runnable childRunnable = new Runnable()
 		{
 			public void run()
@@ -67,7 +63,7 @@ public class Boat
             i = i + 1;
 		}
 
-		// While the theCommunicator sees that there are still threads on Oahu
+		/** the communicator used in the while look will be searching if there are any adult and child threads at Oahu */
 		while (theCommunicator.listen() != (adultTotal + childTotal))
 		{
 			if (theCommunicator.listen() == (adultTotal + childTotal))
@@ -81,8 +77,8 @@ public class Boat
 	{
 		while (true)
 		{
-			// If the solution has been solved, we can tell the theCommunicator that we have
-			// everyone on Molokai
+			/** this 'if' statement is checking to see if the problem has been solved so it can communicate
+			it to the communicator that everyone has arrived to Molokai */
 			if (adultTotal == adultsAtMolokai && childTotal == childAtMolokai)
 			{
 				theCommunicator.speak(adultTotal + childTotal);
@@ -90,59 +86,61 @@ public class Boat
 				break;
 			}
 
-			// If the boat is on Oahu
+			/**this 'if' statement is checking for when the boat is at Oahu */
 			if (locationOfBoat.equals("OahuLocation"))
 			{
-				// If there is one adult on Oahu and at least one child on Oahu
-				if (adultsAtOahu >= 1 && (childTotal != childAtOahu))
+				/**the 'if' statement is checking if there is at least a child left at Oahu
+				and if there is only one adult left at Oahu */
+				if ((childTotal != childAtOahu) && 1 <= adultsAtOahu)
 				{
-					// Make sure nobody else can row besides us
+					/** the lock of the boat is making sure that no one else can be able to row beside us */
 					lockOfBoat.acquire();
 
-					// Row the adult to Molokai
+					/** the adults will be rowing to Molokai */
 					bg.AdultRowToMolokai();
 
-					// Change the values of adults to signify the change
+					/** the amount of adults will be changing depending where they are going.
+						This is having the adults going from Oahu to Molokai*/
 					adultsAtOahu = adultsAtOahu - 1;
 					adultsAtMolokai = adultsAtMolokai + 1;
 
-					// The boat is now on Molokai
+					/** as a result the boat ends up at Molokai */
 					locationOfBoat = "MolokaiLocation";
 
-					// If there are children remaining on Oahu, send a child to pick them up
-					// This should ALWAYS be the case
+
+					/** this 'if' statement is checking to see if children are still left at Oahu
+						so they will be sending another child to pick them up */
 					if (childTotal != childAtMolokai)
 					{
-						// Send one child to pick up the rest of the children at Oahu
+						/** the one child is sent to Oahu to pick up the rest of the children */
 						bg.ChildRowToOahu();
 
-						// Change the values to signify this change
+						/** the amount of children will be changing depending where they are going.
+						This is having the children going from Molokai to Oahu*/
 						childAtOahu = childAtOahu + 1;
 						childAtMolokai = childAtMolokai - 1;
 
-						// The boat moves back to Oahu
+						/** as a result the boat ends up at Oahu */
 						locationOfBoat = "OahuLocation";
 					}
 
-					// Release the lock we held
+					/** the lock that has been held will be released */
 					lockOfBoat.release();
 				}
 			}
 
-			// Prevent busy waiting by yielding this thread while its conditions are not met
 			KThread.yield();
 		}
 	}
 
 	static void ChildItinerary()
 	{
-		// bg.initializeChild(); //Required for autograder interface. Must be the first thing called.
 		//DO NOT PUT ANYTHING ABOVE THIS LINE.
 
 		while (true)
 		{
-			// If the solution has been solved, we can tell the theCommunicator that we have
-			// everyone on Molokai
+			/** this 'if' statement is checking to see if the problem has been solved so it can communicate
+				it to the communicator that everyone has arrived to Molokai */
 			if (adultTotal == adultsAtMolokai && childTotal == childAtMolokai)
 			{
 				theCommunicator.speak(adultTotal + childTotal);
@@ -150,18 +148,20 @@ public class Boat
 				break;
 			}
 
-			// If the boat is on Oahu
+			/**this 'if' statement is checking for when the boat is at Oahu */
 			if (locationOfBoat.equals("OahuLocation"))
 			{
-				// If the amount of adults on Oahu is 0, we only have to commute children
-				// to Molokai
-				if (adultsAtOahu == 0)
+				/** if there aren't any adults left at Oahu we can now focus on bringing
+					the children to Molokai */
+				if (0 == adultsAtOahu) 
 				{
-					// While there are childAtOahu
-					while (childAtOahu > 0)
+					/** we will be performing the following statements while there are
+						children still left at Oahu */
+					while (0 < childAtOahu)
 					{
-						// If we are the only child there, we row back alone to Molokai
-						if (childAtOahu == 1)
+						/** when there is only 1 child left at Oahu that 1 child will go
+							to Molokai alone */
+						if (1 == childAtOahu)
 						{
 							bg.ChildRowToMolokai();
 
@@ -170,8 +170,9 @@ public class Boat
 
 							locationOfBoat = "MolokaiLocation";
 						}
-						// If there is more than one child there, we row two people back to Molokai
-						// and we send one child to Oahu to pick up his friend
+						/** the 'else' statement happens there is more than one child still at Oahu,
+							the system will be having two children going to Molokai and sending one
+							back to Oahu */
 						else
 						{
 							bg.ChildRowToMolokai();
@@ -194,22 +195,25 @@ public class Boat
 					break;
 				}
 
-				// If there are at least 2 children on Oahu
-				if (childAtOahu >= 2)
+				/** the 'if' statement is for when there is at least two children
+					left at Oahu */
+				if (2 <= childAtOahu)
 				{
 					lockOfBoat.acquire();
 
-					// Send a boat with two children to Molokai
+					/** the boat will be traveling to Molokai */
 					bg.ChildRowToMolokai();
 					bg.ChildRideToMolokai();
 
-					// Adjust the values to show the change
+					/** the amount of children will be changing depending where they are going.
+						This is having the children going from Oahu to Molokai*/
 					childAtOahu = childAtOahu - 2;
 					childAtMolokai = childAtMolokai + 2;
 
 					locationOfBoat = "MolokaiLocation";
 
-					// If there is at least one adult back at Oahu, we send one child to pick them up
+					/** this will check if for some reason there is an adult left at Oahu,
+						we will have one child go on the boat to Oahu */
 					if (adultTotal != adultsAtMolokai)
 					{
 						bg.ChildRowToOahu();
@@ -223,17 +227,21 @@ public class Boat
 					lockOfBoat.release();
 				}
 			}
+			/**this 'if' statement is checking for when the boat is at Molokai */
 			else if (locationOfBoat.equals("MolokaiLocation"))
 			{
 				lockOfBoat.acquire();
 
-				// If all the adults are on Molokai
-				if (adultTotal > 0)
+				/** when all of the adults are at Molokai */
+				if (0 < adultTotal)
 				{
+
+					/** this happens when all the adults are at Molokai */
 					if (adultTotal == adultsAtMolokai)
 					{
-						// We put children from Oahu to Molokai
-						while (childTotal < childAtMolokai)
+						/** we pick up the rest of the children by having one child
+							go from Molokai to Oahu */
+						while (childAtMolokai > childTotal)
 						{
 							bg.ChildRowToOahu();
 
@@ -247,12 +255,14 @@ public class Boat
 							childAtOahu = childAtOahu - 2;
 						}
 
-						// Let the theCommunicator know that everyone is on Molokai
+						/** once all the children are at Molokai we will use the 
+							communicator to signal that everyone is at Molokai */
 						theCommunicator.speak(adultTotal + childTotal);
 					}
 				}
 
-				// If there is at least one child back at Oahu, we send one child to pick them up
+				/** this checks if there is at least one child at Oahu to 
+					have another child go and pick them up */
 				if (childTotal != childAtMolokai)
 				{
 					bg.ChildRowToOahu();
@@ -270,7 +280,7 @@ public class Boat
 				lockOfBoat.release();
 			}
 
-			// If conditions are not met, yield the thread
+			/** when the contidition are not met we must yield the thread */
 			KThread.yield();
 		}
 	}
@@ -281,7 +291,7 @@ public class Boat
 		// all of them on the boat). Please also note that you may not
 		// have a single thread calculate a solution and then just play
 		// it back at the autograder -- you will be caught.
-//		System.out.println("\n ***Everyone piles on the boat and goes to Molokai***");
+		// System.out.println("\n ***Everyone piles on the boat and goes to Molokai***");
 		bg.AdultRowToMolokai();
 		bg.ChildRideToMolokai();
 		bg.AdultRideToMolokai();

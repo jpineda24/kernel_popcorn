@@ -75,7 +75,8 @@ public class Alarm
         Machine.interrupt().disable(); //disable interrupts
 
 	    long wakeTime; 
-        wakeTime =  Machine.timer().getTime() + x; //calculate wakeTime
+        wakeTime =  Machine.timer().getTime() ;
+        wakeTime = wakeTime + x; //calculate wakeTime
 
         //pass through wakeTime and current thread as instance variables for a
         WaitingThread a;
