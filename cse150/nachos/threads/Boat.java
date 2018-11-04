@@ -81,7 +81,8 @@ public class Boat
 			it to the communicator that everyone has arrived to Molokai */
 			if (adultTotal == adultsAtMolokai && childTotal == childAtMolokai)
 			{
-				theCommunicator.speak(adultTotal + childTotal);
+				int info = adultTotal + childTotal;
+				theCommunicator.speak(info);
 
 				break;
 			}
@@ -143,7 +144,8 @@ public class Boat
 				it to the communicator that everyone has arrived to Molokai */
 			if (adultTotal == adultsAtMolokai && childTotal == childAtMolokai)
 			{
-				theCommunicator.speak(adultTotal + childTotal);
+				int info1 = adultTotal + childTotal;
+				theCommunicator.speak(info1);
 
 				break;
 			}
@@ -153,15 +155,15 @@ public class Boat
 			{
 				/** if there aren't any adults left at Oahu we can now focus on bringing
 					the children to Molokai */
-				if (0 == adultsAtOahu) 
+				if (adultsAtOahu == 0) 
 				{
 					/** we will be performing the following statements while there are
 						children still left at Oahu */
-					while (0 < childAtOahu)
+					while (childAtOahu > 0)
 					{
 						/** when there is only 1 child left at Oahu that 1 child will go
 							to Molokai alone */
-						if (1 == childAtOahu)
+						if (childAtOahu == 1)
 						{
 							bg.ChildRowToMolokai();
 
@@ -233,7 +235,7 @@ public class Boat
 				lockOfBoat.acquire();
 
 				/** when all of the adults are at Molokai */
-				if (0 < adultTotal)
+				if (adultTotal > 0)
 				{
 
 					/** this happens when all the adults are at Molokai */
@@ -241,7 +243,7 @@ public class Boat
 					{
 						/** we pick up the rest of the children by having one child
 							go from Molokai to Oahu */
-						while (childTotal < childAtMolokai)
+						while (childAtMolokai > childTotal)
 						{
 							bg.ChildRowToOahu();
 
@@ -257,7 +259,8 @@ public class Boat
 
 						/** once all the children are at Molokai we will use the 
 							communicator to signal that everyone is at Molokai */
-						theCommunicator.speak(adultTotal + childTotal);
+						int info = adultTotal + childTotal;
+						theCommunicator.speak(info);
 					}
 				}
 
