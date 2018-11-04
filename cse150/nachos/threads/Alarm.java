@@ -111,14 +111,13 @@ public class Alarm
             {
                 return -1;
             }
-            if (a.wakeUp == b.wakeUp)
+            if (b.wakeUp == a.wakeUp)
             {
                 return 0;
             }
-            else
-            {
-                return 1;
-            }
+           
+            return 1;
+        
         }
     }
 }

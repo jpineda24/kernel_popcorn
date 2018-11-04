@@ -5,8 +5,8 @@ package nachos.threads;
 import nachos.machine.*;
 
 /**
- * A <i>communicator</i> allows threads to synchronously exchange 32-bit
- * messages. Multiple threads can be waiting to <i>speak</i>,
+ * A <i>communicator</i> allows threads  synchronously exchange 32-bit
+ * messages. Multiple threads can be waittoing to <i>speak</i>,
  * and multiple threads can be waiting to <i>listen</i>. But there should never
  * be a time when both a speaker and a listener are waiting, because the two
  * threads can be paired off at this point.
@@ -19,9 +19,9 @@ public class Communicator {
     public Communicator() {
     	// Allocate variables
     	lock = new Lock();
-    	speakerQueue = new Condition2(lock);
-    	listenerQueue = new Condition2(lock);
-		SL = new Condition2(lock);		//it makes sure that listener returns first
+    	speakerQueue = new Condition(lock);
+    	listenerQueue = new Condition(lock);
+		SL = new Condition(lock);		//it makes sure that listener returns first
     	speakerReady = false;
     }
 
@@ -79,9 +79,9 @@ public class Communicator {
     }
     
     private Lock lock;
-    private Condition2 speakerQueue;
-    private Condition2 listenerQueue;
-	private Condition2 SL;
+    private Condition speakerQueue;
+    private Condition listenerQueue;
+	private Condition SL;
     private int message;
 	private int speaker = 0;
 	private int listener = 0;

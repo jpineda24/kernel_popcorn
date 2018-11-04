@@ -75,6 +75,7 @@ public class Condition2 {
 	Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 	while(!waitQueue.isEmpty())  // Check if Queue is empty
 		wake();	// Wake all sleeping threads
+        System.out.println("HELLO");
     }
 
     public int threadCount() {
