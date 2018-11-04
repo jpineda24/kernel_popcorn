@@ -13,7 +13,7 @@ public class Alarm
 {
 
     //create waitingQueue of WaitingThreads, ordered through TimeComparator
-    PriorityQueue<WaitingThread> waitingQueue; //initial capacity, order WaitingComparator
+    PriorityQueue<ThreadWait> waitingQueue; //initial capacity, order WaitingComparator
 
     /**
      * Allocate a new Alarm. Set the machine's timer interrupt handler to this
@@ -22,9 +22,8 @@ public class Alarm
      * <p><b>Note</b>: Nachos will not function correctly with more than one
      * alarm.
      */
-    public Alarm() 
-    {
-        waitingQueue = new PriorityQueue<WaitingThread>(10, new TimeCompare());
+    public Alarm(){
+        waitingQueue = new PriorityQueue<ThreadWait>(10, new TimeCompare());
         Machine.timer().setInterruptHandler(new Runnable() {
 		public void run() { timerInterrupt(); }
 	    });
@@ -41,11 +40,9 @@ public class Alarm
 	
         Machine.interrupt().disable(); //disable
 
-        //if waitingQueue is empty, and current time is greater than or equal to the first WaitingThreads, wakeUp time,
+        //if waitingQueue is empty, and current time is greater than or equal to the first ThreadWaits, wakeUp time,
         while(!waitingQueue.isEmpty() && (waitingQueue.peek().wakeUp < Machine.timer().getTime()
-            || waitingQueue.peek().wakeUp ==  Machine.timer().getTime()))
-    
-        {
+            || waitingQueue.peek().wakeUp ==  Machine.timer().getTime())) {
             waitingQueue.poll().thread.ready(); //pop head
         }
 
@@ -69,8 +66,7 @@ public class Alarm
      *
      * @see	nachos.machine.Timer#getTime()
      */
-    public void waitUntil(long x) 
-    {
+    public void waitUntil(long x){
 
         Machine.interrupt().disable(); //disable interrupts
 
@@ -79,8 +75,8 @@ public class Alarm
         wakeTime = wakeTime + x; //calculate wakeTime
 
         //pass through wakeTime and current thread as instance variables for a
-        WaitingThread a;
-        a = new WaitingThread(wakeTime, KThread.currentThread());
+        ThreadWait a;
+        a = new ThreadWait(wakeTime, KThread.currentThread());
 
         waitingQueue.add(a); //add a to the waitingQueue 
 
@@ -89,30 +85,27 @@ public class Alarm
         Machine.interrupt().enable(); //enable interrupts
     }
 
-    public class WaitingThread //PriorityQueue of waiting threads
-    {
+    //PriorityQueue of waiting threads
+    public class ThreadWait{
         long wakeUp; //time to wake up;
         KThread thread; //thread associated with
 
-        WaitingThread(long timeTowakeUp, KThread threadS) //initialize with these variables
-        {
+        //initialize with these variables
+        ThreadWait(long timeTowakeUp, KThread threadS){
             wakeUp = timeTowakeUp;
             thread = threadS;
         }
 
     }
 
-    public class TimeCompare implements Comparator<WaitingThread> //for comparing wait times
-    {
+    public class TimeCompare implements Comparator<ThreadWait>{ //for comparing wait times
     
-        public int compare(WaitingThread a, WaitingThread b)
+        public int compare(ThreadWait a, ThreadWait b)
         {
-            if(b.wakeUp > a.wakeUp)
-            {
+            if(b.wakeUp > a.wakeUp){
                 return -1;
             }
-            if (b.wakeUp == a.wakeUp)
-            {
+            if (b.wakeUp == a.wakeUp){
                 return 0;
             }
            
