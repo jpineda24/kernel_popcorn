@@ -5,16 +5,16 @@ public class Boat
 {
 	static BoatGrader bg;
 	
-	private static Communicator theCommunicator;
-	private static Lock lockOfBoat;
-	private static String locationOfBoat;
+    static Communicator theCommunicator;
+    static Lock lockOfBoat;
+    static String locationOfBoat;
 
-	static private int adultTotal;
-	static private int childTotal;
-	static private int adultsAtOahu;
-	static private int childAtOahu;
-	static private int adultsAtMolokai;
-	static private int childAtMolokai;
+	static  int adultTotal;
+	static  int childTotal;
+	static  int adultsAtOahu;
+	static  int childAtOahu;
+	static  int adultsAtMolokai;
+	static  int childAtMolokai;
 
 	public static void begin( int adults, int children, BoatGrader b )
 	{
@@ -75,7 +75,7 @@ public class Boat
 
 	static void AdultItinerary()
 	{
-		while (true)
+		while (!false)
 		{
 			/** this 'if' statement is checking to see if the problem has been solved so it can communicate
 			it to the communicator that everyone has arrived to Molokai */
@@ -91,7 +91,7 @@ public class Boat
 			{
 				/**the 'if' statement is checking if there is at least a child left at Oahu
 				and if there is only one adult left at Oahu */
-				if ((childTotal != childAtOahu) && 1 <= adultsAtOahu)
+				if ((childTotal != childAtOahu) && (1 < adultsAtOahu || adultsAtOahu == 1))
 				{
 					/** the lock of the boat is making sure that no one else can be able to row beside us */
 					lockOfBoat.acquire();
@@ -137,7 +137,7 @@ public class Boat
 	{
 		//DO NOT PUT ANYTHING ABOVE THIS LINE.
 
-		while (true)
+		while (!false)
 		{
 			/** this 'if' statement is checking to see if the problem has been solved so it can communicate
 				it to the communicator that everyone has arrived to Molokai */
@@ -197,7 +197,7 @@ public class Boat
 
 				/** the 'if' statement is for when there is at least two children
 					left at Oahu */
-				if (2 <= childAtOahu)
+				if (2 <= childAtOahu || childAtOahu > 2)
 				{
 					lockOfBoat.acquire();
 
@@ -241,7 +241,7 @@ public class Boat
 					{
 						/** we pick up the rest of the children by having one child
 							go from Molokai to Oahu */
-						while (childAtMolokai > childTotal)
+						while (childTotal < childAtMolokai)
 						{
 							bg.ChildRowToOahu();
 

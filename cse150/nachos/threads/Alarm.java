@@ -85,19 +85,6 @@ public class Alarm
         Machine.interrupt().enable(); //enable interrupts
     }
 
-    //PriorityQueue of waiting threads
-    public class ThreadWait{
-        long wakeUp; //time to wake up;
-        KThread thread; //thread associated with
-
-        //initialize with these variables
-        ThreadWait(long timeTowakeUp, KThread threadS){
-            wakeUp = timeTowakeUp;
-            thread = threadS;
-        }
-
-    }
-
     public class TimeCompare implements Comparator<ThreadWait>{ //for comparing wait times
     
         public int compare(ThreadWait a, ThreadWait b)
@@ -112,5 +99,19 @@ public class Alarm
             return 1;
         
         }
+    }
+
+
+    //PriorityQueue of waiting threads
+    public class ThreadWait{
+        long wakeUp; //time to wake up;
+        KThread thread; //thread associated with
+
+        //initialize with these variables
+        ThreadWait(long timeTowakeUp, KThread threadS){
+            wakeUp = timeTowakeUp;
+            thread = threadS;
+        }
+
     }
 }
