@@ -22,13 +22,27 @@ public class UserProcess {
     /**
      * Allocate a new process.
      */
-    public UserProcess() {
+    public UserProcess() { 
+    boolean interrupts = Machine.interrupt().disable();     //disable interrupts
+    //at least 16 files will be supported concurrently
+    fileDes = new OpenFile [16];
+    //set all entries to null
+    for(int i = 0; i < 16; i++){
+        fileDes[i] = null;
+    }
+    //initialize file descriptors 0 and 1 to 
+    fileDes[0] = UserKernel.console.openForReading();
+    fileDes[1] = UserKernel.console.openForWriting();
+
 	int numPhysPages = Machine.processor().getNumPhysPages();
 	pageTable = new TranslationEntry[numPhysPages];
 	for (int i=0; i<numPhysPages; i++)
 	    pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
+
+    //enable interrupts
+    Machine.interrupt().restore(interrupts);
     }
-    
+
     /**
      * Allocate and return a new process of the correct class. The class name
      * is specified by the <tt>nachos.conf</tt> key
@@ -430,6 +444,170 @@ public class UserProcess {
 	}
     }
 
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------------
+    //PART I: 6 SYSTEM CALLS (creat, open, read, write, close, and unlink)
+
+
+    //CREATE FILE
+    public int createFile(String name){
+        //check if there are any file descriptors that are currently available
+        int fdAvailable = findAvailableFD();
+        if(fdAvailable == -1){
+            return -1;
+        }
+        
+        //create a file. otherwise false
+        OpenFile file = ThreadedKernel.fileSystem.open(name, true);
+        //file could not be opened
+        if(file == null){
+            return -1;
+        }
+
+        //else, if conditions are satisfied then we create file descriptor successfully
+        fileDes[fdAvailable] = file;
+
+        return 0;
+    }
+
+    //OPEN FILE
+    public int openFile(String name){
+        //check to see if file to be opened exists
+        int fileExists = getFDCreated(name);
+        if(fileExists == -1){
+            return -1;
+        }
+
+        //attempt opening named file
+        OpenFile openedFile = ThreadedKernel.fileSystem.open(name, false);
+        //if file cannot be opened at the moment, return -1
+        if(openedFile == null){
+            return -1;
+        }
+
+        //if both of the conditions above are satisfied, then return the opened file descriptor
+        fileDes[fileExists] = openedFile;
+
+        return 0;
+
+    }
+
+    //READ FILE
+    public int readFile(int fileDescriptor, int buffer, int length){
+        //if either of these is not true then error happens
+        if(checkInvalid(fileDescriptor) || inBounds(buffer) || length < 0){
+            UThread.currentThread().finish();
+            return -1;
+        }
+
+        Byte buff [] = new Byte[length];
+        OpenFile readFile = fileDes[fileDescriptor];
+
+        int bytesRead = readFile.read(buff, 0, length);
+        if(bytesRead == -1){
+            return -1
+        }
+
+        bytesRead = writeVirtualMemory(buffer, temp);
+		if( bytesRead != size ){
+			return -1;
+        }
+
+        return bytesRead;
+
+    }
+
+    //WRITE INTO FILE
+    public int writeFile(int fileDescriptor, int buffer, int length){
+         //if either of these is not true then error happens
+        if(checkInvalid(fileDescriptor) || inBounds(buffer) || length < 0){
+            UThread.currentThread().finish();
+            return -1;
+        }
+
+        Byte buff [] = new Byte[length];
+        OpenFile writeF = fileDes[fileDescriptor];
+
+        int bytesWritten = readVirtualMemory.read(buffer, buff);
+        if(bytesWritten != length){
+            return -1
+        }
+
+        //try writing bytes
+        bytesWritten = writeF.write(buff, 0, length);
+        //if faiulure to reda then return -1
+        if(bytesWritten == -1){
+            return -1
+        }
+
+        return bytesWritten;
+    }
+
+    //CLOSE FILE
+    public int closeFile(int fileDescriptor){
+        if(checkInvalid(fileDescriptor)){
+            UThread.currentThread().finish();
+            return -1;
+        }
+
+        fileDes[fileDescriptor].close();
+        fileDes[fileDescriptor] = null;
+
+        return 0;
+    }
+
+    //UNLINK FILE
+    public int unlinkFile(String name){
+        if(ThreadedKernel.fileSystem.remove(name)){
+            return 0;
+        }
+        return -1;
+    }
+
+/////////HELPER FUNCTIONS/////////
+
+    //check if file descriptor is invalid
+    public boolean checkInvalid(int fd){
+        if(fileDes[fd] == null){
+            return false;
+        }
+        else{
+            return true;
+        }
+    }
+
+    //return avilable file descriptor
+    public int findAvailableFD(){
+        int i;
+        for(i = 0; i < 16; i++){
+            if(fileDes[i] == null){
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    //find file descriptor by name
+    public int getFDCreated(String name){
+        for(int i = 0; i < 16; i++){
+            if(name == fileDes[i].getName()){
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    //check if address is within bounds
+    boolean inBounds(int buffer){
+        int check = Processor.pageFromAddress(buffer);
+        if(check >= 0 && check < pageNumber){
+            return true;
+        }
+        else{
+            return false;
+        }
+    }
+
     /** The program being run by this process. */
     protected Coff coff;
 
@@ -442,8 +620,19 @@ public class UserProcess {
     protected final int stackPages = 8;
     
     private int initialPC, initialSP;
-    private int argc, argv;
+    private int argc, argv; 
 	
     private static final int pageSize = Processor.pageSize;
     private static final char dbgProcess = 'a';
+
+    /**NEWLY CREATED VARIABLES**/
+
+    //crete file descriptor array
+    protected OpenFile fileDes[];
+
+    //page number
+    protected int pageNumber = 0;
+
+    protected UThread userThread;
+
 }
