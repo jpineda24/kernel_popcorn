@@ -609,11 +609,11 @@ public class UserProcess {
 
         int bytesRead = readFile.read(buff, 0, length);
         if(bytesRead == -1){
-            return -1
+            return -1;
         }
 
-        bytesRead = writeVirtualMemory(buffer, temp);
-		if( bytesRead != size ){
+        bytesRead = writeVirtualMemory(buffer, buff);
+		if( bytesRead != length ){
 			return -1;
         }
 
@@ -634,14 +634,14 @@ public class UserProcess {
 
         int bytesWritten = readVirtualMemory.read(buffer, buff);
         if(bytesWritten != length){
-            return -1
+            return -1;
         }
 
         //try writing bytes
         bytesWritten = writeF.write(buff, 0, length);
         //if faiulure to reda then return -1
         if(bytesWritten == -1){
-            return -1
+            return -1;
         }
 
         return bytesWritten;
