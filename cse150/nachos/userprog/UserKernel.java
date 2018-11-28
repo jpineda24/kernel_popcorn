@@ -112,4 +112,31 @@ public class UserKernel extends ThreadedKernel {
 
     // dummy variables to make javac smarter
     private static Coff dummy1 = null;
+
+    /**----------------------PART II: MULTIPROGRAMMING----------------------*/
+    
+    private static LinkedList<Integer> availablePages = new LinkedList<Integer>();
+    
+    public static int getAvailablePage()
+    {
+    	int numPage = -1;
+    	boolean machineState = Machine.interrupt().disable();
+    	
+    	if(!availablePages.isEmpty())
+    	{
+    		numPage = (int)availablePages.poll();
+    	}
+    	
+    	Machine.interrupt().restore(machineState);
+    	
+    	return numPage;
+    }
+    
+    public static void addAvailablePage(int pageNum)
+    {
+    	boolean machineState = Machine.interrupt().disable();
+    	availablePages.add(pageNum);
+    	Machine.interrupt().restore(machineState);
+    }
 }
+

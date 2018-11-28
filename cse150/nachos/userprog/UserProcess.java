@@ -141,20 +141,67 @@ public class UserProcess {
      *			the array.
      * @return	the number of bytes successfully transferred.
      */
-    public int readVirtualMemory(int vaddr, byte[] data, int offset,
-				 int length) {
-	Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
 
-	byte[] memory = Machine.processor().getMemory();
+     /**----------------------PART II: MULTIPROGRAMMING---------------------- */
+    public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) 
+    {
+        Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
 	
-	// for now, just assume that virtual addresses equal physical addresses
-	if (vaddr < 0 || vaddr >= memory.length)
-	    return 0;
-
-	int amount = Math.min(length, memory.length-vaddr);
-	System.arraycopy(memory, vaddr, data, offset, amount);
-
-	return amount;
+		byte[] physicalMemory = Machine.processor().getMemory();
+		
+		/**The memory is going to be read in bytes*/
+		int memoryRead = 0;
+		
+		
+		/**the variables are used to access the processor to get the addresses*/
+		int startingVirtualPage = Processor.pageFromAddress(vaddr);
+		int virtualOffset = Processor.offsetFromAddress(vaddr);
+		int endingVirtualPage = Processor.pageFromAddress(vaddr + length);
+		
+		/**The TableEntry helps us keep track of the page table*/
+		TranslationEntry TableEntry = getPageTableEntry(startingVirtualPage);
+		
+		/**we have the if statement to check the entry and make sure if the
+		 * page table is null OR that writing into it will not work*/
+		if(TableEntry == null || !TableEntry.valid)
+		{
+			return memoryRead;
+		}
+		
+		/**This will get the smallest length for the system.arraycopy*/
+		memoryRead = Math.min(length, pageSize - virtualOffset);
+		
+		/**This marks where the position will start in source array*/
+		int sourcePos = Processor.makeAddress(TableEntry.ppn, virtualOffset);
+		
+		System.arraycopy(physicalMemory, sourcePos, data, offset, length);
+		
+		TableEntry.used = !false;
+		
+		offset = offset + memoryRead;
+		
+		/**it will now go down the pages to get to correct address*/
+		for(int i = startingVirtualPage + 1; endingVirtualPage >= i; i++)
+		{
+			TableEntry = getPageTableEntry(i);
+			
+			if(TableEntry == null || !TableEntry.valid)
+			{
+				return memoryRead;
+			}
+			
+			int currentLength = Math.min(length - memoryRead, pageSize);
+			int currentSourcePos = Processor.makeAddress(TableEntry.ppn, 0);
+			
+			System.arraycopy(physicalMemory, currentSourcePos, data, offset, currentLength);
+			
+			TableEntry.used = !false;
+			
+			memoryRead = memoryRead + currentLength;
+			offset = offset + currentLength;	
+		}
+		
+		return memoryRead;
     }
 
     /**
@@ -184,20 +231,64 @@ public class UserProcess {
      *			virtual memory.
      * @return	the number of bytes successfully transferred.
      */
-    public int writeVirtualMemory(int vaddr, byte[] data, int offset,
-				  int length) {
-	Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
-
-	byte[] memory = Machine.processor().getMemory();
+    public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) 
+    {
+        Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
 	
-	// for now, just assume that virtual addresses equal physical addresses
-	if (vaddr < 0 || vaddr >= memory.length)
-	    return 0;
-
-	int amount = Math.min(length, memory.length-vaddr);
-	System.arraycopy(data, offset, memory, vaddr, amount);
-
-	return amount;
+		byte[] physicalMemory = Machine.processor().getMemory();
+		
+		int memoryRead = 0;
+		
+		/**the variables are used to access the processor to get the addresses*/
+		int startingVirtualPage = Processor.pageFromAddress(vaddr);
+		int virtualOffset = Processor.offsetFromAddress(vaddr);
+		int endingVirtualPage = Processor.pageFromAddress(vaddr + length);
+		
+		/**The TableEntry helps us keep track of the page table*/
+		TranslationEntry TableEntry = getPageTableEntry(startingVirtualPage);
+		
+		/**we have the if statement to check the entry and make sure if the
+		 * page table is null OR that writing into it will not work*/
+		if(TableEntry == null || !TableEntry.valid || TableEntry.readOnly)
+		{
+			return memoryRead;
+		}
+		
+		/**This will get the smallest length for the system.arraycopy*/
+		memoryRead = Math.min(length, pageSize - virtualOffset);
+		
+		/**This marks where the position will start in source array*/
+		int sourcePos = Processor.makeAddress(TableEntry.ppn, virtualOffset);
+		
+		System.arraycopy(data, offset, physicalMemory, sourcePos, memoryRead);
+		
+		TableEntry.used = !false;
+		TableEntry.dirty = !false;
+		
+		offset = offset + memoryRead;
+		
+		for(int i = startingVirtualPage + 1; endingVirtualPage >= i; i++)
+		{
+			TableEntry = getPageTableEntry(i);
+			
+			if(TableEntry == null || TableEntry.readOnly)
+			{
+				return memoryRead;
+			}
+			
+			int currentLength = Math.min(length - memoryRead, pageSize);
+			int currentSourcePos = Processor.makeAddress(TableEntry.ppn, 0);
+			
+			System.arraycopy(data, offset, physicalMemory, currentSourcePos, currentLength);
+			
+			TableEntry.used = !false;
+			TableEntry.dirty = !false;
+			
+			memoryRead = memoryRead + currentLength;
+			offset = offset + currentLength;
+		}
+		
+		return memoryRead;
     }
 
     /**
@@ -295,35 +386,48 @@ public class UserProcess {
      *
      * @return	<tt>true</tt> if the sections were successfully loaded.
      */
-    protected boolean loadSections() {
-	if (numPages > Machine.processor().getNumPhysPages()) {
-	    coff.close();
-	    Lib.debug(dbgProcess, "\tinsufficient physical memory");
-	    return false;
-	}
-
-	// load sections
-	for (int s=0; s<coff.getNumSections(); s++) {
-	    CoffSection section = coff.getSection(s);
-	    
-	    Lib.debug(dbgProcess, "\tinitializing " + section.getName()
-		      + " section (" + section.getLength() + " pages)");
-
-	    for (int i=0; i<section.getLength(); i++) {
-		int vpn = section.getFirstVPN()+i;
-
-		// for now, just assume virtual addresses=physical addresses
-		section.loadPage(i, vpn);
-	    }
-	}
+    protected boolean loadSections() 
+    {
+        if (numPages > Machine.processor().getNumPhysPages()) {
+		    coff.close();
+		    Lib.debug(dbgProcess, "\tinsufficient physical memory");
+		    return false;
+		}
 	
-	return true;
+		// load sections
+		for (int s = 0; s < coff.getNumSections(); s++) {
+		    CoffSection section = coff.getSection(s);
+		    
+		    Lib.debug(dbgProcess, "\tinitializing " + section.getName()
+			      + " section (" + section.getLength() + " pages)");
+	
+		    for (int i = 0; i < section.getLength(); i++) 
+		    {
+				int vpn = section.getFirstVPN() + i;
+				TranslationEntry translation = pageTable[vpn];
+				translation.readOnly = section.isReadOnly();
+				
+				if(!inBounds(translation.ppn))
+				{
+					return !true;
+				}
+		
+				section.loadPage(i, translation.ppn);
+		    }
+		}
+		
+		return true;
     }
 
     /**
      * Release any resources allocated by <tt>loadSections()</tt>.
      */
-    protected void unloadSections() {
+    protected void unloadSections() 
+    {
+        for(int i = 0; numPages > i; i++)
+    	{
+    		UserKernel.addAvailablePage(pageTable[i].ppn);
+    	}
     }    
 
     /**
@@ -606,6 +710,17 @@ public class UserProcess {
         else{
             return false;
         }
+    }
+
+    /**this will get the entry from the page table */
+    private TranslationEntry getPageTableEntry(int VPN)
+    {
+    	if(pageTable.length == 0 || !inBounds(VPN))
+    	{
+    		return null;
+    	}
+    	
+    	return pageTable[VPN];
     }
 
     /** The program being run by this process. */
