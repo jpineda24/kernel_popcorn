@@ -174,7 +174,7 @@ public class UserProcess {
 		/**This marks where the position will start in source array*/
 		int sourcePos = Processor.makeAddress(TableEntry.ppn, virtualOffset);
 		
-		System.arraycopy(physicalMemory, sourcePos, data, offset, length);
+		System.arraycopy(physicalMemory, sourcePos, data, offset, memoryRead);
 		
 		TableEntry.used = !false;
 		
@@ -395,7 +395,8 @@ public class UserProcess {
 		}
 	
 		// load sections
-		for (int s = 0; s < coff.getNumSections(); s++) {
+		for (int s = 0; s < coff.getNumSections(); s++) 
+		{
 		    CoffSection section = coff.getSection(s);
 		    
 		    Lib.debug(dbgProcess, "\tinitializing " + section.getName()
@@ -604,7 +605,7 @@ public class UserProcess {
             return -1;
         }
 
-        Byte buff [] = new Byte[length];
+        byte buff [] = new byte[length];
         OpenFile readFile = fileDes[fileDescriptor];
 
         int bytesRead = readFile.read(buff, 0, length);
@@ -623,29 +624,31 @@ public class UserProcess {
 
     //WRITE INTO FILE
     public int writeFile(int fileDescriptor, int buffer, int length){
-         //if either of these is not true then error happens
-        if(checkInvalid(fileDescriptor) || inBounds(buffer) || length < 0){
-            UThread.currentThread().finish();
-            return -1;
-        }
+        //if either of these is not true then error happens
+       if(checkInvalid(fileDescriptor) || inBounds(buffer) || length < 0){
+           UThread.currentThread().finish();
+           return -1;
+       }
 
-        Byte buff [] = new Byte[length];
-        OpenFile writeF = fileDes[fileDescriptor];
+       byte buff [] = new byte[length];
+       OpenFile writeF = fileDes[fileDescriptor];
 
-        int bytesWritten = readVirtualMemory.read(buffer, buff);
-        if(bytesWritten != length){
-            return -1;
-        }
+      // int bytesWritten = readVirtualMemory.read(buffer, buff);
+       int bytesWritten = readVirtualMemory(buffer,buff);
+       
+       if(bytesWritten != length){
+           return -1;
+       }
 
-        //try writing bytes
-        bytesWritten = writeF.write(buff, 0, length);
-        //if faiulure to reda then return -1
-        if(bytesWritten == -1){
-            return -1;
-        }
+       //try writing bytes
+       bytesWritten = writeF.write(buff, 0, length);
+       //if faiulure to reda then return -1
+       if(bytesWritten == -1){
+           return -1;
+       }
 
-        return bytesWritten;
-    }
+       return bytesWritten;
+   }
 
     //CLOSE FILE
     public int closeFile(int fileDescriptor){
