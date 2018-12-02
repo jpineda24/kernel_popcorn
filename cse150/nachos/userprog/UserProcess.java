@@ -3,6 +3,7 @@ package nachos.userprog;
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
+import java.util.HashMap;
 
 import java.io.EOFException;
 
@@ -23,13 +24,10 @@ public class UserProcess {
      * Allocate a new process.
      */
     public UserProcess() { 
-	    boolean interrupts = Machine.interrupt().disable();     //disable interrupts
 	    //at least 16 files will be supported concurrently
 	    fileDes = new OpenFile [16];
-	    //set all entries to null
-	    for(int i = 0; i < 16; i++){
-	        fileDes[i] = null;
-	    }
+	    semaforo = new Semaphore(0);
+	
 	    //initialize file descriptors 0 and 1 to 
 	    fileDes[0] = UserKernel.console.openForReading();
 	    fileDes[1] = UserKernel.console.openForWriting();
@@ -40,7 +38,7 @@ public class UserProcess {
 		    pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
 	
 	    //enable interrupts
-	    Machine.interrupt().restore(interrupts);
+        UserKernel.processes();
     }
 
     /**
@@ -143,68 +141,51 @@ public class UserProcess {
      */
 
      /**----------------------PART II: MULTIPROGRAMMING---------------------- */
-  public int readVirtualMemory(int vaddr, byte[] dest, int destPos,int length)
+    public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) 
     {
-		Lib.assertTrue(destPos >= 0 && length >= 0 && destPos+length <= dest.length);
-		// 	    System.arraycopy(physicalMemory, srcPos, dest, destPos, memoryRead);
+        //get back
+        Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
 
-	    // The amount of memory read in bytes
-	    int memoryRead = 0;
-
-	    byte[] physicalMemory = Machine.processor().getMemory();
-
-	    int firstVirtualPage = Processor.pageFromAddress(vaddr);
-	    int virtualOffset = Processor.offsetFromAddress(vaddr);
-	    int lastVirtualPage = Processor.pageFromAddress(vaddr + length);
-
-	    // The tableEntry in our pageTable
-	    // Has a few checks in the helper function to make our life easier
-	    TranslationEntry tableEntry = getPageTableEntry(firstVirtualPage);
-
-	    // If the entry is not within bounds or the pageTable is null OR we can't write to this
-	    if (tableEntry == null || !tableEntry.valid)
-	    {
-		    // we return the memory read (0 at this point)
-		    return memoryRead;
-	    }
-
-	    // The new length for system.arraycopy is the smallest, either length or pageSize - virtualOffset
-	    memoryRead = Math.min(length, pageSize - virtualOffset);
-
-	    // The starting position in the source array
-	    int srcPos = Processor.makeAddress(tableEntry.ppn, virtualOffset);
-
-	    // More information on System.arraycopy on TutorialsPoint
-	    // System.arraycopy(Obj srcArray, int startingPositionInSrc, Obj destArray, int destPositionStart, int length)
-	    System.arraycopy(physicalMemory, srcPos, dest, destPos, memoryRead);
-
-	    tableEntry.used = true;
-
-	    destPos += memoryRead;
-
-	    for (int i = firstVirtualPage + 1; i <= lastVirtualPage; i++)
-	    {
-		    tableEntry = getPageTableEntry(i);
-
-		    // If the entry is not within bounds or the pageTable is null OR we can't write to this
-		    if (tableEntry == null || !tableEntry.valid)
-		    {
-			    // we return the memory read
-			    return memoryRead;
-		    }
-
-		    int currentLength = Math.min(length - memoryRead, pageSize);
-		    int currentSrcPos = Processor.makeAddress(tableEntry.ppn, 0);
-
-		    System.arraycopy(physicalMemory, currentSrcPos, dest, destPos, currentLength);
-
-		    tableEntry.used = true;
-
-		    memoryRead += currentLength;
-		    destPos += currentLength;
-	    }
-
-	    return memoryRead;
+		byte[] physicalMemory = Machine.processor().getMemory();
+		
+		/**The memory is going to be read in bytes*/
+		int memoryRead = 0;
+		
+		while(length > memoryRead)
+		{
+			int VPN = (memoryRead + vaddr) / pageSize;
+			int virtualOffset = (memoryRead + vaddr) % pageSize;
+			
+			if(0 > VPN || pageTable.length <= VPN)
+			{
+				return 0;
+			}
+			
+			TranslationEntry TableEntry = pageTable[VPN];
+			
+			if(TableEntry == null || TableEntry.valid == false)
+			{
+				System.out.println("VPN " + VPN + " entry not valid");
+				return 0;
+			}
+			
+			int physicalAddress = TableEntry.ppn * pageSize + virtualOffset;
+			
+			if(physicalAddress < 0 || physicalMemory.length <= physicalAddress)
+			{
+				return 0;
+			}
+			
+			int maxLimit = (TableEntry.ppn + 1) * pageSize;
+			int total = Math.min(maxLimit - physicalAddress, Math.min(length - memoryRead, physicalMemory.length - physicalAddress));
+			
+			System.arraycopy(physicalMemory, physicalAddress, data, offset + memoryRead, total);
+			
+			memoryRead = memoryRead + total;
+		}
+		
+		return memoryRead;
+		
     }
 
     /**
@@ -236,6 +217,7 @@ public class UserProcess {
      */
     public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) 
     {
+        //get back
         Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
 	
 		byte[] physicalMemory = Machine.processor().getMemory();
@@ -277,65 +259,16 @@ public class UserProcess {
 			TableEntry.dirty = !false;
 			
 			int maxLimit = (TableEntry.ppn + 1) * pageSize;
-			int amount = Math.min(maxLimit - physicalAddress, Math.min(length - memoryWrite, physicalMemory.length - physicalAddress));
+			int total = Math.min(maxLimit - physicalAddress, Math.min(length - memoryWrite, physicalMemory.length - physicalAddress));
 			
-			System.arraycopy(data, offset + memoryWrite, physicalMemory, physicalAddress, amount);
+			System.arraycopy(data, offset + memoryWrite, physicalMemory, physicalAddress, total);
 			
-			memoryWrite = memoryWrite + amount;
+			memoryWrite = memoryWrite + total;
 		}
 		
 		return length;
 		
-//		/**the variables are used to access the processor to get the addresses*/
-//		int startingVirtualPage = Processor.pageFromAddress(vaddr);
-//		int virtualOffset = Processor.offsetFromAddress(vaddr);
-//		int endingVirtualPage = Processor.pageFromAddress(vaddr + length);
-//		
-//		/**The TableEntry helps us keep track of the page table*/
-//		TranslationEntry TableEntry = getPageTableEntry(startingVirtualPage);
-//		
-//		/**we have the if statement to check the entry and make sure if the
-//		 * page table is null OR that writing into it will not work*/
-//		if(TableEntry == null || !TableEntry.valid || TableEntry.readOnly)
-//		{
-//			return memoryRead;
-//		}
-//		
-//		/**This will get the smallest length for the system.arraycopy*/
-//		memoryRead = Math.min(length, pageSize - virtualOffset);
-//		
-//		/**This marks where the position will start in source array*/
-//		int sourcePos = Processor.makeAddress(TableEntry.ppn, virtualOffset);
-//		
-//		System.arraycopy(data, offset, physicalMemory, sourcePos, memoryRead);
-//		
-//		TableEntry.used = !false;
-//		TableEntry.dirty = !false;
-//		
-//		offset = offset + memoryRead;
-//		
-//		for(int i = startingVirtualPage + 1; endingVirtualPage >= i; i++)
-//		{
-//			TableEntry = getPageTableEntry(i);
-//			
-//			if(TableEntry == null || TableEntry.readOnly)
-//			{
-//				return memoryRead;
-//			}
-//			
-//			int currentLength = Math.min(length - memoryRead, pageSize);
-//			int currentSourcePos = Processor.makeAddress(TableEntry.ppn, 0);
-//			
-//			System.arraycopy(data, offset, physicalMemory, currentSourcePos, currentLength);
-//			
-//			TableEntry.used = !false;
-//			TableEntry.dirty = !false;
-//			
-//			memoryRead = memoryRead + currentLength;
-//			offset = offset + currentLength;
-//		}
-//		
-//		return memoryRead;
+
     }
 
     /**
@@ -520,13 +453,152 @@ public class UserProcess {
      * Handle the halt() system call. 
      */
     private int handleHalt() {
-
-	Machine.halt();
-	
-	Lib.assertNotReached("Machine.halt() did not halt machine!");
+        if(processID == 0)
+        {
+            Machine.halt();
+        }
+        else{
+            return -1;
+        }
+    Lib.assertNotReached("Machine.halt() did not halt machine!");
 	return 0;
     }
 
+
+    //HANDLE EXIT
+    void exitFile (int statusReport){
+        int i;
+        for(i = 0; fileDes.length > i; ++i){
+            if(fileDes[i] != null){
+                fileDes[i].close();
+            }
+        }
+
+        for(Integer ii: ninos.keySet()){
+            ninos.get(ii).parentProcessID = -1;
+        }
+
+        unloadSections();
+
+        exitStatus = statusReport;
+        UserKernel.exited(this, statusReport);
+
+        if(0 == UserKernel.getProcesses()){
+            Kernel.kernel.terminate();
+        }
+
+        semaforo.V();
+
+        UThread.currentThread().finish();
+
+    }
+
+    int execution(int namePointer, int argument, int argumentPointer){
+        String file = readVirtualMemoryString(namePointer, 256);
+
+        if (argument >= 0 && file != null && file.indexOf(".coff") == file.length() - ".coff".length()) {
+
+            // Obtain the pointers to the argv char buffers
+            int[] arrayPtr = new int[argument];
+            byte[] argvb = new byte[argument * 4];
+            int offset = 0;
+            while (offset < argument * 4) {
+                offset += readVirtualMemory(argumentPointer, argvb, offset, (argument * 4) - offset);
+            }
+            for (int i = 0; i < argument; ++i) {
+                arrayPtr[i] = Lib.bytesToInt(argvb, 4 * i, 4);
+                //System.out.println("Argv pointer: " + arrayPtr[i]);
+            }
+
+            // Retrieve the contents of argv and store them in a string array
+            String[] argv = new String[argument];
+            for (int i = 0; i < argument; ++i) {
+                argv[i] = readVirtualMemoryString(arrayPtr[i], 256);
+                //System.out.println("Argv " + i + " " + argv[i]);
+            }
+
+            // Set up new process and initialize other variables and file descriptor
+            // Set up new process' state, declare it as a nino, and initialize required variables
+            UserProcess nino = newUserProcess();
+            nino.processID = UserKernel.newProcessID();
+            nino.parentProcessID = processID;
+            ninos.put(nino.processID, nino);
+            
+            if(nino.execute(file, argv)) {
+                return nino.processID;
+            } else {
+                nino.parentProcessID = -1;
+                ninos.remove(nino.processID);
+                UserKernel.exited(nino,-1);
+                return -1;
+            }
+        } else {
+            //Error with file
+            System.out.println("Error with file");
+            return -1;
+        }
+    }
+
+    int joining(int procId, int statusPtr) {
+        if (!ninos.containsKey(procId)) {
+            System.out.println("Theres no child with id: " + procId);
+            return -1;
+        }
+
+        // Call child process's semaphore to wait for it to call exit
+        // If it already called exit, then it has already called V and P
+        // will automatically return.
+        //System.out.println("Going to sleep to wait for child to wake");
+        ninos.get(procId).semaforo.P();
+        //System.out.println("Parent process " + processID + " woke after exit was called");
+
+        // Write status value
+        int status = ninos.get(procId).exitStatus;
+        if(writeVirtualMemory(statusPtr, Lib.bytesFromInt(status), 0, 4) != 4) {
+            return -1;
+        }
+        //System.out.println("Status is: " + status);
+        ninos.remove(procId);
+
+        if (status != -1) {
+            return 1;
+        }
+
+        return 0;
+    }
+
+    private int creat(int nameAddr) {
+
+        // Find open file descriptor and assign
+        // Translate the memory address of the filename string
+        // Open file with the provided StubFileSystem passing create flag (true)
+        // Return assigned file descriptor
+
+        int fileDescriptor = -1;
+
+        for (int i = 0; i < this.fileDes.length; i++)
+            if (fileDes[i] == null)
+                fileDescriptor = i;
+
+        if (fileDescriptor == -1)
+            return -1;
+
+        String filename = readVirtualMemoryString(nameAddr, MAX_FILENAME_BYTE_SIZE);
+
+        if (filename == null || filename.length() == 0)
+            return -1;
+
+        OpenFile newFile;
+
+        newFile = UserKernel.fileSystem.open(filename, true);
+
+        if (newFile == null)
+            return -1;
+
+        this.fileDes[fileDescriptor] = newFile;
+
+        return fileDescriptor;
+    }
 
     private static final int
         syscallHalt = 0,
@@ -550,7 +622,7 @@ public class UserProcess {
      * <tr><td>1</td><td><tt>void exit(int status);</tt></td></tr>
      * <tr><td>2</td><td><tt>int  exec(char *name, int argc, char **argv);
      * 								</tt></td></tr>
-     * <tr><td>3</td><td><tt>int  join(int pid, int *status);</tt></td></tr>
+     * <tr><td>3</td><td><tt>int  join(int processID, int *status);</tt></td></tr>
      * <tr><td>4</td><td><tt>int  creat(char *name);</tt></td></tr>
      * <tr><td>5</td><td><tt>int  open(char *name);</tt></td></tr>
      * <tr><td>6</td><td><tt>int  read(int fd, char *buffer, int size);
@@ -572,10 +644,16 @@ public class UserProcess {
 	switch (syscall) {
 	case syscallHalt:
 	    return handleHalt();
+	case syscallExit:
+        exitFile(a0);
+    case syscallExec:
+        return execution(a0, a1, a2);
+    case syscallJoin:
+        return joining(a0, a1);
     case syscallCreate:
-		return createFile(readVirtualMemoryString(a0,256));
+		return createFile(a0);
     case syscallOpen:
-        return openFile(readVirtualMemoryString(a0,256));
+        return openFile(a0);
     case syscallRead:
         return readFile(a0, a1, a2);
     case syscallWrite:
@@ -629,15 +707,20 @@ public class UserProcess {
 
 
     //CREATE FILE
-    public int createFile(String name){
+    public int createFile(int name){
         //check if there are any file descriptors that are currently available
         int fdAvailable = findAvailableFD();
         if(fdAvailable == -1){
             return -1;
         }
         
+        String filename = readVirtualMemoryString(name, MAX_FILENAME_BYTE_SIZE);
+
+        if (filename == null || filename.length() == 0)
+            return -1;
+
         //create a file. otherwise false
-        OpenFile file = ThreadedKernel.fileSystem.open(name, true);
+        OpenFile file = ThreadedKernel.fileSystem.open(filename, true);
         //file could not be opened
         if(file == null){
             return -1;
@@ -646,19 +729,24 @@ public class UserProcess {
         //else, if conditions are satisfied then we create file descriptor successfully
         fileDes[fdAvailable] = file;
 
-        return 0;
+        return fdAvailable;
     }
 
     //OPEN FILE
-    public int openFile(String name){
+    public int openFile(int name){
         //check to see if file to be opened exists
-        int fileExists = getFDCreated(name);
+        int fileExists = findAvailableFD();
         if(fileExists == -1){
             return -1;
         }
 
+        String filename = readVirtualMemoryString(name, MAX_FILENAME_BYTE_SIZE);
+
+         if (filename == null || filename.length() == 0)
+            return -1;
+
         //attempt opening named file
-        OpenFile openedFile = ThreadedKernel.fileSystem.open(name, false);
+        OpenFile openedFile = ThreadedKernel.fileSystem.open(filename, false);
         //if file cannot be opened at the moment, return -1
         if(openedFile == null){
             return -1;
@@ -667,29 +755,43 @@ public class UserProcess {
         //if both of the conditions above are satisfied, then return the opened file descriptor
         fileDes[fileExists] = openedFile;
 
-        return 0;
+        return fileExists;
 
     }
 
     //READ FILE
     public int readFile(int fileDescriptor, int buffer, int length){
-        //if either of these is not true then error happens
-        if(checkInvalid(fileDescriptor) || inBounds(buffer) || length < 0){
-            UThread.currentThread().finish();
+       if(length < 0)
+            return -1;
+
+        // Check that buffer is a valid address before allocating a giant byte buffer
+        byte[] addrTestBuff = new byte[1];
+        if(readVirtualMemory(buffer,addrTestBuff,0,1) != 1) {
             return -1;
         }
 
-        byte buff [] = new byte[length];
-        OpenFile readFile = fileDes[fileDescriptor];
-
-        int bytesRead = readFile.read(buff, 0, length);
-        if(bytesRead == -1){
+        if(fileDescriptor < 0 || fileDescriptor > 15)
             return -1;
+
+        if(fileDes[fileDescriptor] == null)
+            return -1;
+
+        byte[] bytes = new byte[length];
+        int bytesRead = 0;
+
+        // Grab the file, read the correct number of bytes to a new array
+        while(bytesRead < length) {
+            int read = fileDes[fileDescriptor].read(bytes, bytesRead, length - bytesRead);
+            if(read == -1) {
+                return -1;
+            }
+            bytesRead = bytesRead +  read;
         }
 
-        bytesRead = writeVirtualMemory(buffer, buff);
-		if( bytesRead != length ){
-			return -1;
+
+        // Write the read bytes to virtual memory
+        if(writeVirtualMemory(buffer, bytes, 0, bytesRead) != bytesRead) {
+            return -1;
         }
 
         return bytesRead;
@@ -790,15 +892,15 @@ public class UserProcess {
     }
 
     /**this will get the entry from the page table */
-   private TranslationEntry getPageTableEntry(int VPN)
-   {
-   	if(pageTable.length == 0 || !inBounds(VPN))
-   	{
-   		return null;
-   	}
-   	
-   	return pageTable[VPN];
-   }
+//    private TranslationEntry getPageTableEntry(int VPN)
+//    {
+//    	if(pageTable.length == 0 || !inBounds(VPN))
+//    	{
+//    		return null;
+//    	}
+//    	
+//    	return pageTable[VPN];
+//    }
 
     /** The program being run by this process. */
     protected Coff coff;
@@ -819,12 +921,23 @@ public class UserProcess {
 
     /**NEWLY CREATED VARIABLES**/
 
+    private HashMap<Integer, UserProcess> ninos = new HashMap<Integer, UserProcess>();
+    public int parentProcessID = -1;
+    public int exitStatus;
+
+
     //crete file descriptor array
     protected OpenFile fileDes[];
 
     //page number
     protected int pageNumber = 0;
 
+    private int processID = 0; 
     protected UThread userThread;
+
+    public Semaphore semaforo;
+
+     private static final int MAX_FILENAME_BYTE_SIZE = 256;
+    private static final int MAX_OPEN_FILES = 16;
 
 }

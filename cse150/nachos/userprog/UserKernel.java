@@ -62,15 +62,15 @@ public class UserKernel extends ThreadedKernel {
 //	System.out.println("");
     }
 
-    public static int newPID() {
+    public static int newProcessID() {
         return ++nextPID;
     }
 
-    public static int getNumProcs() {
+    public static int getProcesses() {
         return numProcs;
     }
 
-    public static int incNumProcs() {
+    public static int processes() {
         return ++numProcs;
     }
 
