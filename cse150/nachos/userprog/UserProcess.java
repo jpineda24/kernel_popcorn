@@ -505,13 +505,30 @@ public class UserProcess {
      */
     public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
 	switch (syscall) {
-	case syscallHalt:
-	    return handleHalt();
+        case syscallHalt:
+            return handleHalt();
 
+        case syscallCreate:
+            return createFile(readVirtualMemoryString(a0,256));
 
-	default:
-	    Lib.debug(dbgProcess, "Unknown syscall " + syscall);
-	    Lib.assertNotReached("Unknown system call!");
+        case syscallOpen:
+            return openFile(readVirtualMemoryString(a0,256));
+
+        case syscallRead:
+            return readFile(a0, a1, a2);
+
+        case syscallWrite:
+            return writeFile(a0, a1, a2);
+
+        case syscallClose:
+            return closeFile(a0);
+
+        case syscallUnlink:
+            return unlinkFile(readVirtualMemoryString(a0,256));
+            
+        default:
+            Lib.debug(dbgProcess, "Unknown syscall " + syscall);
+            Lib.assertNotReached("Unknown system call!");
 	}
 	return 0;
     }
