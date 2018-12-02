@@ -6,6 +6,8 @@ import nachos.userprog.*;
 
 import java.io.EOFException;
 
+import java.util.ArrayList;
+
 /**
  * Encapsulates the state of a user process that is not contained in its
  * user thread (or threads). This includes its address translation state, a
@@ -35,6 +37,9 @@ public class UserProcess {
         pageTable = new TranslationEntry[numPhysPages];
         for (int i=0; i<numPhysPages; i++)
             pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
+
+        ProcessID=GenerateID++;
+        Processes.add(ProcessID,this);
 
         //enable interrupts
         Machine.interrupt().restore(interrupts);
@@ -509,7 +514,7 @@ public class UserProcess {
             return handleHalt();
 
         case syscallCreate:
-            return handleCreate(readVirtualMemoryString(a0,256));
+            return createFile(readVirtualMemoryString(a0,256));
 
         case syscallOpen:
             return openFile(readVirtualMemoryString(a0,256));
@@ -569,40 +574,25 @@ public class UserProcess {
 
 
     //CREATE FILE
-    // public int createFile(String name){
-    //     //check if there are any file descriptors that are currently available
-    //     int fdAvailable = findAvailableFD();
-    //     if(fdAvailable == -1){
-    //         return -1;
-    //     }
+    public int createFile(String name){
+        //check if there are any file descriptors that are currently available
+        int fdAvailable = findAvailableFD();
+        if(fdAvailable == -1){
+            return -1;
+        }
         
-    //     //create a file. otherwise false
-    //     OpenFile file = ThreadedKernel.fileSystem.open(name, true);
-    //     //file could not be opened
-    //     if(file == null){
-    //         return -1;
-    //     }
+        //create a file. otherwise false
+        OpenFile file = ThreadedKernel.fileSystem.open(name, true);
+        //file could not be opened
+        if(file == null){
+            return -1;
+        }
 
-    //     //else, if conditions are satisfied then we create file descriptor successfully
-    //     fileDes[fdAvailable] = file;
+        //else, if conditions are satisfied then we create file descriptor successfully
+        fileDes[fdAvailable] = file;
 
-    //     return 0;
-    // }
-
-    public int handleCreate(String name) {
-		// sanitize name
-
-		int fd = getAvailableFileDescriptor();
-		if(fd == -1)
-			return -1;
-
-		OpenFile openfile = ThreadedKernel.fileSystem.open(name, true);
-		if(openfile == null)
-			return -1;
-
-		fileDes[fd] = openfile;
-		return 0;
-	}
+        return 0;
+    }
 
     //OPEN FILE
     public int openFile(String name){
@@ -723,14 +713,6 @@ public class UserProcess {
         return -1;
     }
 
-     protected int getAvailableFileDescriptor() {
-	for(int i = 0; i < 16; i++) {
-		if(fileDes[i] == null)
-			return i;
-	}
-	return -1;
-    }
-
     //find file descriptor by name
     public int getFDCreated(String name){
         for(int i = 0; i < 16; i++){
@@ -790,4 +772,7 @@ public class UserProcess {
 
     protected UThread userThread;
 
+    public int ProcessID ;
+    private static int GenerateID = 0;
+    private static ArrayList<UserProcess> Processes = new ArrayList<UserProcess>();
 }
