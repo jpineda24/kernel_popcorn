@@ -661,7 +661,7 @@ public class UserProcess {
     case syscallClose:
         return closeFile(a0);
     case syscallUnlink:
-        return unlinkFile(readVirtualMemoryString(a0,256));
+        return unlinkFile(a0);
 
 
 	default:
@@ -785,7 +785,7 @@ public class UserProcess {
             if(read == -1) {
                 return -1;
             }
-            bytesRead = bytesRead +  read;
+            bytesRead += read;
         }
 
 
@@ -828,23 +828,37 @@ public class UserProcess {
 
     //CLOSE FILE
     public int closeFile(int fileDescriptor){
-        if(checkInvalid(fileDescriptor)){
-            UThread.currentThread().finish();
+        if(fileDescriptor < 0 || fileDescriptor > 15)
             return -1;
-        }
 
-        fileDes[fileDescriptor].close();
-        fileDes[fileDescriptor] = null;
+        OpenFile fileToClose = this.fileDes[fileDescriptor];
+
+        if(fileToClose == null || fileToClose.length() < 0)
+            return -1;
+
+        fileToClose.close();
+
+        if(fileToClose.length() != -1)
+            return -1;
+
+        this.fileDes[fileDescriptor] = null;
 
         return 0;
     }
 
     //UNLINK FILE
-    public int unlinkFile(String name){
-        if(ThreadedKernel.fileSystem.remove(name)){
-            return 0;
-        }
-        return -1;
+    public int unlinkFile(int name){
+        String filename = readVirtualMemoryString(name, MAX_FILENAME_BYTE_SIZE);
+
+        if (filename == null || filename.length() == 0)
+            return -1;
+
+        boolean isClosed = UserKernel.fileSystem.remove(filename);
+
+        if (!isClosed)
+            return -1;
+
+        return 0;
     }
 
 /////////HELPER FUNCTIONS/////////
