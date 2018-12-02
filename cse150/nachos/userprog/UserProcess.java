@@ -152,56 +152,90 @@ public class UserProcess {
 		/**The memory is going to be read in bytes*/
 		int memoryRead = 0;
 		
-		
-		/**the variables are used to access the processor to get the addresses*/
-		int startingVirtualPage = Processor.pageFromAddress(vaddr);
-		int virtualOffset = Processor.offsetFromAddress(vaddr);
-		int endingVirtualPage = Processor.pageFromAddress(vaddr + length);
-		
-		/**The TableEntry helps us keep track of the page table*/
-		TranslationEntry TableEntry = getPageTableEntry(startingVirtualPage);
-		
-		/**we have the if statement to check the entry and make sure if the
-		 * page table is null OR that writing into it will not work*/
-		if(TableEntry == null || !TableEntry.valid)
+		while(length > memoryRead)
 		{
-			return memoryRead;
-		}
-		
-		/**This will get the smallest length for the system.arraycopy*/
-		memoryRead = Math.min(length, pageSize - virtualOffset);
-		
-		/**This marks where the position will start in source array*/
-		int sourcePos = Processor.makeAddress(TableEntry.ppn, virtualOffset);
-		
-		System.arraycopy(physicalMemory, sourcePos, data, offset, memoryRead);
-		
-		TableEntry.used = !false;
-		
-		offset = offset + memoryRead;
-		
-		/**it will now go down the pages to get to correct address*/
-		for(int i = startingVirtualPage + 1; endingVirtualPage >= i; i++)
-		{
-			TableEntry = getPageTableEntry(i);
+			int VPN = (memoryRead + vaddr) / pageSize;
+			int virtualOffset = (memoryRead + vaddr) % pageSize;
 			
-			if(TableEntry == null || !TableEntry.valid)
+			if(0 > VPN || pageTable.length <= VPN)
 			{
-				return memoryRead;
+				return 0;
 			}
 			
-			int currentLength = Math.min(length - memoryRead, pageSize);
-			int currentSourcePos = Processor.makeAddress(TableEntry.ppn, 0);
+			TranslationEntry TableEntry = pageTable[VPN];
 			
-			System.arraycopy(physicalMemory, currentSourcePos, data, offset, currentLength);
+			if(TableEntry == null || TableEntry.valid == false)
+			{
+				System.out.println("VPN " + VPN + " entry not valid");
+				return 0;
+			}
 			
-			TableEntry.used = !false;
+			int physicalAddress = TableEntry.ppn * pageSize + virtualOffset;
 			
-			memoryRead = memoryRead + currentLength;
-			offset = offset + currentLength;	
+			if(physicalAddress < 0 || physicalMemory.length <= physicalAddress)
+			{
+				return 0;
+			}
+			
+			int maxLimit = (TableEntry.ppn + 1) * pageSize;
+			int amount = Math.min(maxLimit - physicalAddress, Math.min(length - memoryRead, physicalMemory.length - physicalAddress));
+			
+			System.arraycopy(physicalMemory, physicalAddress, data, offset + memoryRead, amount);
+			
+			memoryRead = memoryRead + amount;
 		}
 		
 		return memoryRead;
+		
+//		/**the variables are used to access the processor to get the addresses*/
+//		int startingVirtualPage = Processor.pageFromAddress(vaddr);
+//		int virtualOffset = Processor.offsetFromAddress(vaddr);
+//		int endingVirtualPage = Processor.pageFromAddress(vaddr + length);
+//		
+//		/**The TableEntry helps us keep track of the page table*/
+//		TranslationEntry TableEntry = getPageTableEntry(startingVirtualPage);
+//		
+//		/**we have the if statement to check the entry and make sure if the
+//		 * page table is null OR that writing into it will not work*/
+//		if(TableEntry == null || !TableEntry.valid)
+//		{
+//			return memoryRead;
+//		}
+//		
+//		/**This will get the smallest length for the system.arraycopy*/
+//		memoryRead = Math.min(length, pageSize - virtualOffset);
+//		
+//		/**This marks where the position will start in source array*/
+//		int sourcePos = Processor.makeAddress(TableEntry.ppn, virtualOffset);
+//		
+//		System.arraycopy(physicalMemory, sourcePos, data, offset, memoryRead);
+//		
+//		TableEntry.used = !false;
+//		
+//		offset = offset + memoryRead;
+//		
+//		/**it will now go down the pages to get to correct address*/
+//		for(int i = startingVirtualPage + 1; endingVirtualPage >= i; i++)
+//		{
+//			TableEntry = getPageTableEntry(i);
+//			
+//			if(TableEntry == null || !TableEntry.valid)
+//			{
+//				return memoryRead;
+//			}
+//			
+//			int currentLength = Math.min(length - memoryRead, pageSize);
+//			int currentSourcePos = Processor.makeAddress(TableEntry.ppn, 0);
+//			
+//			System.arraycopy(physicalMemory, currentSourcePos, data, offset, currentLength);
+//			
+//			TableEntry.used = !false;
+//			
+//			memoryRead = memoryRead + currentLength;
+//			offset = offset + currentLength;	
+//		}
+//		
+//		return memoryRead;
     }
 
     /**
@@ -237,58 +271,102 @@ public class UserProcess {
 	
 		byte[] physicalMemory = Machine.processor().getMemory();
 		
-		int memoryRead = 0;
+		int memoryWrite = 0;
 		
-		/**the variables are used to access the processor to get the addresses*/
-		int startingVirtualPage = Processor.pageFromAddress(vaddr);
-		int virtualOffset = Processor.offsetFromAddress(vaddr);
-		int endingVirtualPage = Processor.pageFromAddress(vaddr + length);
-		
-		/**The TableEntry helps us keep track of the page table*/
-		TranslationEntry TableEntry = getPageTableEntry(startingVirtualPage);
-		
-		/**we have the if statement to check the entry and make sure if the
-		 * page table is null OR that writing into it will not work*/
-		if(TableEntry == null || !TableEntry.valid || TableEntry.readOnly)
+		while(length > memoryWrite)
 		{
-			return memoryRead;
-		}
-		
-		/**This will get the smallest length for the system.arraycopy*/
-		memoryRead = Math.min(length, pageSize - virtualOffset);
-		
-		/**This marks where the position will start in source array*/
-		int sourcePos = Processor.makeAddress(TableEntry.ppn, virtualOffset);
-		
-		System.arraycopy(data, offset, physicalMemory, sourcePos, memoryRead);
-		
-		TableEntry.used = !false;
-		TableEntry.dirty = !false;
-		
-		offset = offset + memoryRead;
-		
-		for(int i = startingVirtualPage + 1; endingVirtualPage >= i; i++)
-		{
-			TableEntry = getPageTableEntry(i);
+			int VPN = (memoryWrite + vaddr) / pageSize;
+			int virtualOffset = (memoryWrite + vaddr) % pageSize;
 			
-			if(TableEntry == null || TableEntry.readOnly)
+			if(0 > VPN || pageTable.length <= VPN)
 			{
-				return memoryRead;
+				return 0;
 			}
 			
-			int currentLength = Math.min(length - memoryRead, pageSize);
-			int currentSourcePos = Processor.makeAddress(TableEntry.ppn, 0);
+			TranslationEntry TableEntry = pageTable[VPN];
 			
-			System.arraycopy(data, offset, physicalMemory, currentSourcePos, currentLength);
+			if(TableEntry == null || TableEntry.valid == false)
+			{
+				TableEntry.ppn = UserKernel.getAvailablePage();
+				TableEntry.valid = !false;
+			}
+			
+			if(TableEntry.readOnly == !false)
+			{
+				return 0;
+			}
 			
 			TableEntry.used = !false;
+			
+			int physicalAddress = TableEntry.ppn * pageSize + virtualOffset;
+			
+			if(physicalAddress < 0 || physicalMemory.length <= physicalAddress)
+			{
+				return 0;
+			}
+			
 			TableEntry.dirty = !false;
 			
-			memoryRead = memoryRead + currentLength;
-			offset = offset + currentLength;
+			int maxLimit = (TableEntry.ppn + 1) * pageSize;
+			int amount = Math.min(maxLimit - physicalAddress, Math.min(length - memoryWrite, physicalMemory.length - physicalAddress));
+			
+			System.arraycopy(data, offset + memoryWrite, physicalMemory, physicalAddress, amount);
+			
+			memoryWrite = memoryWrite + amount;
 		}
 		
-		return memoryRead;
+		return length;
+		
+//		/**the variables are used to access the processor to get the addresses*/
+//		int startingVirtualPage = Processor.pageFromAddress(vaddr);
+//		int virtualOffset = Processor.offsetFromAddress(vaddr);
+//		int endingVirtualPage = Processor.pageFromAddress(vaddr + length);
+//		
+//		/**The TableEntry helps us keep track of the page table*/
+//		TranslationEntry TableEntry = getPageTableEntry(startingVirtualPage);
+//		
+//		/**we have the if statement to check the entry and make sure if the
+//		 * page table is null OR that writing into it will not work*/
+//		if(TableEntry == null || !TableEntry.valid || TableEntry.readOnly)
+//		{
+//			return memoryRead;
+//		}
+//		
+//		/**This will get the smallest length for the system.arraycopy*/
+//		memoryRead = Math.min(length, pageSize - virtualOffset);
+//		
+//		/**This marks where the position will start in source array*/
+//		int sourcePos = Processor.makeAddress(TableEntry.ppn, virtualOffset);
+//		
+//		System.arraycopy(data, offset, physicalMemory, sourcePos, memoryRead);
+//		
+//		TableEntry.used = !false;
+//		TableEntry.dirty = !false;
+//		
+//		offset = offset + memoryRead;
+//		
+//		for(int i = startingVirtualPage + 1; endingVirtualPage >= i; i++)
+//		{
+//			TableEntry = getPageTableEntry(i);
+//			
+//			if(TableEntry == null || TableEntry.readOnly)
+//			{
+//				return memoryRead;
+//			}
+//			
+//			int currentLength = Math.min(length - memoryRead, pageSize);
+//			int currentSourcePos = Processor.makeAddress(TableEntry.ppn, 0);
+//			
+//			System.arraycopy(data, offset, physicalMemory, currentSourcePos, currentLength);
+//			
+//			TableEntry.used = !false;
+//			TableEntry.dirty = !false;
+//			
+//			memoryRead = memoryRead + currentLength;
+//			offset = offset + currentLength;
+//		}
+//		
+//		return memoryRead;
     }
 
     /**
@@ -394,6 +472,8 @@ public class UserProcess {
 		    return false;
 		}
 	
+        int pageLoad = 0;
+        
 		// load sections
 		for (int s = 0; s < coff.getNumSections(); s++) 
 		{
@@ -405,16 +485,25 @@ public class UserProcess {
 		    for (int i = 0; i < section.getLength(); i++) 
 		    {
 				int vpn = section.getFirstVPN() + i;
-				TranslationEntry translation = pageTable[vpn];
-				translation.readOnly = section.isReadOnly();
 				
-				if(!inBounds(translation.ppn))
+				if(pageTable[vpn] == null)
 				{
-					return !true;
+					pageTable[vpn] = new TranslationEntry(vpn, UserKernel.getAvailablePage(),true, false, false, false);
+					pageLoad++;
 				}
-		
-				section.loadPage(i, translation.ppn);
+				
+				TranslationEntry translateEntry = pageTable[vpn];
+				
+				translateEntry.used = !false;
+				translateEntry.readOnly = section.isReadOnly();
+				
+				section.loadPage(i, translateEntry.ppn);
 		    }
+		}
+		
+		for(int i = pageLoad; i <= pageLoad + 8; i++)
+		{
+			pageTable[i] = new TranslationEntry(i, UserKernel.getAvailablePage(),true,false,false,false);
 		}
 		
 		return true;
@@ -427,7 +516,11 @@ public class UserProcess {
     {
         for(int i = 0; numPages > i; i++)
     	{
-    		UserKernel.addAvailablePage(pageTable[i].ppn);
+    		if(pageTable[i] != null)
+    		{
+    			pageTable[i].valid = !true;
+    			UserKernel.addAvailablePage(pageTable[i].ppn);
+    		}
     	}
     }    
 
