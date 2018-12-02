@@ -217,105 +217,62 @@ public class UserProcess {
      *			virtual memory.
      * @return	the number of bytes successfully transferred.
      */
-    // public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) 
-    // {
-    //     //get back
-    //      if(!(offset >= 0 && length >= 0 && offset + length <= data.length)) {
-    //         return 0;
-    //     }
-	
-	// 	byte[] physicalMemory = Machine.processor().getMemory();
-		
-	// 	int memoryWrite = 0;
-		
-	// 	while(length > memoryWrite)
-	// 	{
-	// 		int VPN = (memoryWrite + vaddr) / pageSize;
-	// 		int virtualOffset = (memoryWrite + vaddr) % pageSize;
-			
-	// 		if(0 > VPN || pageTable.length <= VPN)
-	// 		{
-	// 			return 0;
-	// 		}
-			
-	// 		TranslationEntry TableEntry = pageTable[VPN];
-			
-	// 		if(TableEntry == null || TableEntry.valid == false)
-	// 		{
-	// 			TableEntry.ppn = UserKernel.getAvailablePage();
-	// 			TableEntry.valid = !false;
-	// 		}
-			
-	// 		if(TableEntry.readOnly == !false)
-	// 		{
-	// 			return 0;
-	// 		}
-			
-	// 		TableEntry.used = !false;
-			
-	// 		int physicalAddress = TableEntry.ppn * pageSize + virtualOffset;
-			
-	// 		if(physicalAddress < 0 || physicalMemory.length <= physicalAddress)
-	// 		{
-	// 			return 0;
-	// 		}
-			
-	// 		TableEntry.dirty = !false;
-			
-	// 		int maxLimit = (TableEntry.ppn + 1) * pageSize;
-	// 		int total = Math.min(maxLimit - physicalAddress, Math.min(length - memoryWrite, physicalMemory.length - physicalAddress));
-			
-	// 		System.arraycopy(data, offset + memoryWrite, physicalMemory, physicalAddress, total);
-			
-	// 		memoryWrite = memoryWrite + total;
-	// 	}
-		
-	// 	return length;
-		
-
-    // }
-
-    public int writeVirtualMemory(int vaddr, byte[] data, int offset,
-                                  int length) {
-        if(!(offset >= 0 && length >= 0 && offset + length <= data.length)) {
+    public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) 
+    {
+        //get back
+         if(!(offset >= 0 && length >= 0 && offset + length <= data.length)) {
             return 0;
         }
+	
+		byte[] physicalMemory = Machine.processor().getMemory();
+		
+		int memoryWrite = 0;
+		
+		while(length > memoryWrite)
+		{
+			int VPN = (memoryWrite + vaddr) / pageSize;
+			int virtualOffset = (memoryWrite + vaddr) % pageSize;
+			
+			if(0 > VPN || pageTable.length <= VPN)
+			{
+				return 0;
+			}
+			
+			TranslationEntry TableEntry = pageTable[VPN];
+			
+			if(TableEntry == null || TableEntry.valid == false)
+			{
+				TableEntry.ppn = UserKernel.getAvailablePage();
+				TableEntry.valid = !false;
+			}
+			
+			if(TableEntry.readOnly == !false)
+			{
+				return 0;
+			}
+			
+			TableEntry.used = !false;
+			
+			int physicalAddress = TableEntry.ppn * pageSize + virtualOffset;
+			
+			if(physicalAddress < 0 || physicalMemory.length <= physicalAddress)
+			{
+				return 0;
+			}
+			
+			TableEntry.dirty = !false;
+			
+			int maxLimit = (TableEntry.ppn + 1) * pageSize;
+			int total = Math.min(maxLimit - physicalAddress, Math.min(length - memoryWrite, physicalMemory.length - physicalAddress));
+			
+			System.arraycopy(data, offset + memoryWrite, physicalMemory, physicalAddress, total);
+			
+			memoryWrite = memoryWrite + total;
+		}
+		
+		return length;
+		
 
-        byte[] memory = Machine.processor().getMemory();
-        int bytesWritten = 0;
-        while(bytesWritten < length) {
-
-            int vpn = (vaddr+bytesWritten) / pageSize;
-            //System.out.println("WRITE VPN: " + vpn);
-            int virtual_offset = (vaddr+bytesWritten) % pageSize;
-            if(vpn < 0 || vpn >= pageTable.length) {
-                return 0;
-            }
-
-            TranslationEntry new_entry = pageTable[vpn];
-            if(new_entry == null || new_entry.valid == false) {
-                //System.out.println("---------Creating new page entry");
-                new_entry.ppn = UserKernel.getAvailablePage();
-                new_entry.valid = true;
-            }
-            if(new_entry.readOnly == true) {
-                return 0;
-            }
-            new_entry.used = true;
-
-            int physical_addr = new_entry.ppn * pageSize + virtual_offset;
-            if (physical_addr < 0 || physical_addr >= memory.length)
-                return 0;
-            new_entry.dirty = true;
-
-            int limit = (new_entry.ppn + 1)*pageSize;
-            int amount = Math.min((limit-physical_addr), Math.min(length - bytesWritten, memory.length - physical_addr));
-
-            System.arraycopy(data, offset+bytesWritten, memory, physical_addr, amount);
-            bytesWritten += amount;
-        }
-
-        return length;
     }
 
     /**
