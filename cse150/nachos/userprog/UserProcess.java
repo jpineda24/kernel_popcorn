@@ -144,7 +144,9 @@ public class UserProcess {
     public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) 
     {
         //get back
-        Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
+       if(!(offset >= 0 && length >= 0 && offset + length <= data.length)) {
+            return 0;
+        }
 
 		byte[] physicalMemory = Machine.processor().getMemory();
 		
@@ -218,7 +220,9 @@ public class UserProcess {
     public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) 
     {
         //get back
-        Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
+         if(!(offset >= 0 && length >= 0 && offset + length <= data.length)) {
+            return 0;
+        }
 	
 		byte[] physicalMemory = Machine.processor().getMemory();
 		
@@ -545,12 +549,8 @@ public class UserProcess {
             return -1;
         }
 
-        // Call child process's semaphore to wait for it to call exit
-        // If it already called exit, then it has already called V and P
-        // will automatically return.
-        //System.out.println("Going to sleep to wait for child to wake");
         ninos.get(procId).semaforo.P();
-        //System.out.println("Parent process " + processID + " woke after exit was called");
+    
 
         // Write status value
         int status = ninos.get(procId).exitStatus;
