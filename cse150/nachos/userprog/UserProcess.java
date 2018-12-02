@@ -6,8 +6,6 @@ import nachos.userprog.*;
 
 import java.io.EOFException;
 
-import java.util.ArrayList;
-
 /**
  * Encapsulates the state of a user process that is not contained in its
  * user thread (or threads). This includes its address translation state, a
@@ -25,24 +23,24 @@ public class UserProcess {
      * Allocate a new process.
      */
     public UserProcess() { 
-        boolean interrupts = Machine.interrupt().disable();     //disable interrupts
-        //at least 16 files will be supported concurrently
-        fileDes = new OpenFile [16];
-        
-        //initialize file descriptors 0 and 1 to 
-        fileDes[0] = UserKernel.console.openForReading();
-        fileDes[1] = UserKernel.console.openForWriting();
-
-        int numPhysPages = Machine.processor().getNumPhysPages();
-        pageTable = new TranslationEntry[numPhysPages];
-        for (int i=0; i<numPhysPages; i++)
-            pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
-
-        ProcessID=GenerateID++;
-        Processes.add(ProcessID,this);
-
-        //enable interrupts
-        Machine.interrupt().restore(interrupts);
+	    boolean interrupts = Machine.interrupt().disable();     //disable interrupts
+	    //at least 16 files will be supported concurrently
+	    fileDes = new OpenFile [16];
+	    //set all entries to null
+	    for(int i = 0; i < 16; i++){
+	        fileDes[i] = null;
+	    }
+	    //initialize file descriptors 0 and 1 to 
+	    fileDes[0] = UserKernel.console.openForReading();
+	    fileDes[1] = UserKernel.console.openForWriting();
+	
+		int numPhysPages = Machine.processor().getNumPhysPages();
+		pageTable = new TranslationEntry[numPhysPages];
+		for (int i=0; i<numPhysPages; i++)
+		    pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
+	
+	    //enable interrupts
+	    Machine.interrupt().restore(interrupts);
     }
 
     /**
@@ -603,30 +601,13 @@ public class UserProcess {
      */
     public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
 	switch (syscall) {
-        case syscallHalt:
-            return handleHalt();
+	case syscallHalt:
+	    return handleHalt();
 
-        case syscallCreate:
-            return createFile(readVirtualMemoryString(a0,256));
 
-        case syscallOpen:
-            return openFile(readVirtualMemoryString(a0,256));
-
-        case syscallRead:
-            return readFile(a0, a1, a2);
-
-        case syscallWrite:
-            return writeFile(a0, a1, a2);
-
-        case syscallClose:
-            return closeFile(a0);
-
-        case syscallUnlink:
-            return unlinkFile(readVirtualMemoryString(a0,256));
-
-        default:
-            Lib.debug(dbgProcess, "Unknown syscall " + syscall);
-            Lib.assertNotReached("Unknown system call!");
+	default:
+	    Lib.debug(dbgProcess, "Unknown syscall " + syscall);
+	    Lib.assertNotReached("Unknown system call!");
 	}
 	return 0;
     }
@@ -828,15 +809,15 @@ public class UserProcess {
     }
 
     /**this will get the entry from the page table */
-    private TranslationEntry getPageTableEntry(int VPN)
-    {
-    	if(pageTable.length == 0 || !inBounds(VPN))
-    	{
-    		return null;
-    	}
-    	
-    	return pageTable[VPN];
-    }
+//    private TranslationEntry getPageTableEntry(int VPN)
+//    {
+//    	if(pageTable.length == 0 || !inBounds(VPN))
+//    	{
+//    		return null;
+//    	}
+//    	
+//    	return pageTable[VPN];
+//    }
 
     /** The program being run by this process. */
     protected Coff coff;
@@ -865,7 +846,4 @@ public class UserProcess {
 
     protected UThread userThread;
 
-    public int ProcessID ;
-    private static int GenerateID = 0;
-    private static ArrayList<UserProcess> Processes = new ArrayList<UserProcess>();
 }

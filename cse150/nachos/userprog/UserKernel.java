@@ -3,7 +3,10 @@ package nachos.userprog;
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
+
 import java.util.LinkedList;
+import java.util.HashMap;
+import java.util.HashSet;
 
 /**
  * A kernel that can support multiple user processes.
@@ -20,14 +23,23 @@ public class UserKernel extends ThreadedKernel {
      * Initialize this kernel. Creates a synchronized console and sets the
      * processor's exception handler.
      */
-    public void initialize(String[] args) {
-	super.initialize(args);
-
-	console = new SynchConsole(Machine.console());
+    public void initialize(String[] args) 
+    {
+		super.initialize(args);
+		
+		availablePages = new LinkedList<Integer>();
+		lockOfPage = new Lock();
 	
-	Machine.processor().setExceptionHandler(new Runnable() {
-		public void run() { exceptionHandler(); }
-	    });
+		console = new SynchConsole(Machine.console());
+		
+		Machine.processor().setExceptionHandler(new Runnable() {
+			public void run() { exceptionHandler(); }
+		    });
+		
+		for(int i = 0; i < Machine.processor().getNumPhysPages(); i++)
+		{
+			availablePages.add(i);
+		}
     }
 
     /**
@@ -113,31 +125,26 @@ public class UserKernel extends ThreadedKernel {
 
     // dummy variables to make javac smarter
     private static Coff dummy1 = null;
-
-    /**----------------------PART II: MULTIPROGRAMMING----------------------*/
     
-    private static LinkedList<Integer> availablePages = new LinkedList<Integer>();
+    /**----------------------NEW CODE----------------------*/
+    
+    private static LinkedList<Integer> availablePages;
     
     public static int getAvailablePage()
     {
-    	int numPage = -1;
-    	boolean machineState = Machine.interrupt().disable();
-    	
-    	if(!availablePages.isEmpty())
-    	{
-    		numPage = (int)availablePages.poll();
-    	}
-    	
-    	Machine.interrupt().restore(machineState);
-    	
-    	return numPage;
+    	lockOfPage.acquire();
+    	int available = availablePages.getFirst();
+    	availablePages.removeFirst();
+    	lockOfPage.release();
+    	return available;
     }
     
     public static void addAvailablePage(int pageNum)
     {
-    	boolean machineState = Machine.interrupt().disable();
+    	lockOfPage.acquire();
     	availablePages.add(pageNum);
-    	Machine.interrupt().restore(machineState);
+    	lockOfPage.release();
     }
+    
+    private static Lock lockOfPage;
 }
-
