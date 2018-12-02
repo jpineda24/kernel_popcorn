@@ -48,20 +48,36 @@ public class UserKernel extends ThreadedKernel {
     public void selfTest() {
 	super.selfTest();
 
-	System.out.println("Testing the console device. Typed characters");
-	System.out.println("will be echoed until q is typed.");
-
-	char c;
-
-	do {
-	    c = (char) console.readByte(true);
-	    console.writeByte(c);
-	}
-	while (c != 'q');
-
-	System.out.println("");
+//	System.out.println("Testing the console device. Typed characters");
+//	System.out.println("will be echoed until q is typed.");
+//
+//	char c;
+//
+//	do {
+//	    c = (char) console.readByte(true);
+//	    console.writeByte(c);
+//	}
+//	while (c != 'q');
+//
+//	System.out.println("");
     }
 
+    public static int newPID() {
+        return ++nextPID;
+    }
+
+    public static int getNumProcs() {
+        return numProcs;
+    }
+
+    public static int incNumProcs() {
+        return ++numProcs;
+    }
+
+    public static int exited(UserProcess proc, int status) {
+        return --numProcs;
+    }
+    
     /**
      * Returns the current process.
      *
@@ -147,4 +163,6 @@ public class UserKernel extends ThreadedKernel {
     }
     
     private static Lock lockOfPage;
+    private static int numProcs = 0;
+    private static int nextPID = 0;
 }
