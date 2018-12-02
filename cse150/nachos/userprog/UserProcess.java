@@ -23,24 +23,21 @@ public class UserProcess {
      * Allocate a new process.
      */
     public UserProcess() { 
-    boolean interrupts = Machine.interrupt().disable();     //disable interrupts
-    //at least 16 files will be supported concurrently
-    fileDes = new OpenFile [16];
-    //set all entries to null
-    for(int i = 0; i < 16; i++){
-        fileDes[i] = null;
-    }
-    //initialize file descriptors 0 and 1 to 
-    fileDes[0] = UserKernel.console.openForReading();
-    fileDes[1] = UserKernel.console.openForWriting();
+        boolean interrupts = Machine.interrupt().disable();     //disable interrupts
+        //at least 16 files will be supported concurrently
+        fileDes = new OpenFile [16];
+        
+        //initialize file descriptors 0 and 1 to 
+        fileDes[0] = UserKernel.console.openForReading();
+        fileDes[1] = UserKernel.console.openForWriting();
 
-	int numPhysPages = Machine.processor().getNumPhysPages();
-	pageTable = new TranslationEntry[numPhysPages];
-	for (int i=0; i<numPhysPages; i++)
-	    pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
+        int numPhysPages = Machine.processor().getNumPhysPages();
+        pageTable = new TranslationEntry[numPhysPages];
+        for (int i=0; i<numPhysPages; i++)
+            pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
 
-    //enable interrupts
-    Machine.interrupt().restore(interrupts);
+        //enable interrupts
+        Machine.interrupt().restore(interrupts);
     }
 
     /**
