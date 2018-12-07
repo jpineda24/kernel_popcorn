@@ -382,8 +382,8 @@ public class UserProcess {
             }
         }
         int i;
-        int i = loadedPages;
-        for (int i = loadedPages; i <= loadedPages + 8; i++) 
+         i = loadedPages;
+        for ( i = loadedPages; i <= loadedPages + 8; i++) 
         {
             pageTable[i] = new TranslationEntry(i, UserKernel.getAvailablePage(), true, false, false, false);
         }
@@ -421,7 +421,7 @@ public class UserProcess {
 
         // by default, everything's 0
         int xx = 0;
-        while(i < processor.numUserRegisters){
+        while(xx < processor.numUserRegisters){
         // for (int i = 0; i < processor.numUserRegisters; i++)
             processor.writeRegister(xx, 0);
             xx = xx + 1;
@@ -704,7 +704,9 @@ public class UserProcess {
       // int bytesWritten = readVirtualMemory.read(buffer, buff);
        int bytesWritten = readVirtualMemory(buffer,buff);
        
-       if(bytesWritten != length){
+       boolean check = bytesWritten != length; 
+
+       if(check){
            return -1;
        }
 
@@ -727,7 +729,7 @@ public class UserProcess {
 
         OpenFile closeFile = this.fileDes[fileDescriptor];
 
-        if(closeFile == null || closeFile.length() < 0)
+        if(null == closeFile || 0 > closeFile.length())
         {
             return -1;
         }
@@ -748,7 +750,7 @@ public class UserProcess {
     public int unlinkFile(int name){
         String filename = readVirtualMemoryString(name, maximoByte);
 
-        if (filename == null || filename.length() == 0)
+        if (filename.length() == 0 || null == filename )
         {
             return -1;
         }
